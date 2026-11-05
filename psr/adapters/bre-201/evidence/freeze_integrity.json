@@ -1,0 +1,24 @@
+{
+  "frozen_inputs_unchanged": true,
+  "checked_file_count": 16,
+  "sha256": {
+    "Docs/semantic-runtime/m0/eval/dataset/gold_cases.jsonl": "5bd1216de79791c7091e565a23cd2e83dd29a2f3b0cbe23fec58a5855a513ba6",
+    "Docs/semantic-runtime/m0/eval/dataset/manifest.json": "b7fdf1c7d0889c320a0dae9adf45c3d273d24dc295e200e04775823e75f5b521",
+    "Docs/semantic-runtime/m0/eval/harness.cjs": "778a156901a2aa0b3e433429f56b35063d1f06c3d529aebb082fbf550aca2887",
+    "Docs/semantic-runtime/m0/eval/rag_baseline/corpus.jsonl": "06073eb74e65a07035fa06fe326dea5602d7ff9225251130c511c603fe074a29",
+    "Docs/semantic-runtime/m0/eval/rag_baseline/retriever.cjs": "3c00beddf63b5fd8fe609bbc9c1a6c63b4968818b98078f9667ac196668e78b1",
+    "schemas/semantic-runtime/m0/knowledge-object.schema.json": "d7a17ef500e7ef30e3e06074907d985cb2139e5e2326af57af402e8ff09f73dd",
+    "schemas/semantic-runtime/m0/semantic-view.schema.json": "93054c0d72fa6a540b63664e0c6542e0f3b11f1017ba21814433f6fcc3470930",
+    "schemas/semantic-runtime/m0/risk-report.schema.json": "9213afe90d685c30d55d1567c564808393acf567bd300ae6f13c4b86cc8c0323",
+    "schemas/semantic-runtime/m0/bundle.schema.json": "62e62fa704dc098c006e77fd08107af63ee69f56c106bf0f5c311cf983714462",
+    "schemas/semantic-runtime/m0/change-set.schema.json": "b6241d3026993783e39952914e3cebb3faebfbb592fcbe2e6af3729f0326d9f5",
+    "schemas/semantic-runtime/m0/common.schema.json": "d17a8ca0615448c7dc5c81273dd341fa740882843f84de71ad6dfe150b8ae524",
+    "schemas/semantic-runtime/m0/namespace.schema.json": "22f5567cd0cf2d2ce4fc4b2c95e36c64405538fecd273f94729790e31131909c",
+    "schemas/semantic-runtime/m0/assertion.schema.json": "dfcdeb93b50f809899743eb58841b89928abf9989c62a14ac35e5cfaf5140a75",
+    "schemas/semantic-runtime/m0/project.schema.json": "827eade7213a13f9d6c225d6a54a210dfdb6305938405559e30663a9c27804bf",
+    "schemas/semantic-runtime/m0/relation.schema.json": "7f1f92e9f6bed173ce9b914b876e2ef1e6f08f2e0f21eb049118e1ca4115c0d3",
+    "schemas/semantic-runtime/m0/evidence.schema.json": "bb3da6b986db6060cf11abcf4dba3da0682a2fa1dbfda54d199534f9e7b960f9"
+  },
+  "center_lock_unchanged": true,
+  "center_lock_sha256": "16904c44db523154a55147ee34315a7500d2c5c06cfccfa5c1b19c966ff4f647"
+}

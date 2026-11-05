@@ -1,0 +1,2903 @@
+{
+  "schema": "bre201.fixture-comparison/v1",
+  "mode": "offline retrieval and proposed-evidence adapter comparison",
+  "dataset_id": "bre182-m0-drift",
+  "dataset_version": "1.0.0",
+  "case_count": 25,
+  "bas_source_head": "da29e3a9d1e62d2dba016021e9ba2e4a66d51c2c",
+  "frozen_hashes": {
+    "dataset/gold_cases.jsonl": "5bd1216de79791c7091e565a23cd2e83dd29a2f3b0cbe23fec58a5855a513ba6",
+    "rag_baseline/corpus.jsonl": "06073eb74e65a07035fa06fe326dea5602d7ff9225251130c511c603fe074a29",
+    "rag_baseline/retriever.cjs": "3c00beddf63b5fd8fe609bbc9c1a6c63b4968818b98078f9667ac196668e78b1",
+    "dataset/manifest.json": "b7fdf1c7d0889c320a0dae9adf45c3d273d24dc295e200e04775823e75f5b521",
+    "harness.cjs": "778a156901a2aa0b3e433429f56b35063d1f06c3d529aebb082fbf550aca2887"
+  },
+  "implementation_sha256": {
+    "src/compare.cjs": "8090ed4e27dbc8616bb59ebd0b60efd87523832fd359430093a1738519ee8103",
+    "src/demo.cjs": "473b115923d4f9add71ad6099a5573dfa899bf255598b30254fd8d8afef5d82e",
+    "src/eval_worker.cjs": "b55db25fb4a55ddbf35bfebd6d8f92eb4af4913759063017b13a2df7724bd7be",
+    "src/mapper.js": "20d921a43bc4f0492010de2cb85a2a592184e6a7bc76ffdb88ddaf41795700a8",
+    "src/ragflow_client_stub.js": "e35b6f266f1759e09b026abf0442b8fc1516fb9f3a394f576d350b3254f08597",
+    "src/sidecar.js": "7831eab6929e616719d1c04329e7cbf1a4f87d2a96bc98805ccf2616272ca983",
+    "src/store_overlay.js": "64e96fce2c8fc052f2a8cec42646900535eca7ea78968e92820adcd7e199a8fb"
+  },
+  "configuration": {
+    "retrieval_limit": 3,
+    "source_excerpt_count": 38,
+    "selection": "unmodified BRE-182 retriever for both systems",
+    "revision_schedule": "identical static freeze; synthetic lifecycle replay is a separate demo",
+    "provider": null,
+    "node": "v26.4.0"
+  },
+  "isolation": {
+    "mechanism": "Node --permission exact source/retriever read allowlist; no child-process, FFI, or write grants",
+    "denied_files": [
+      "dataset/gold_cases.jsonl",
+      "dataset/manifest.json",
+      "harness.cjs"
+    ],
+    "all_denied": true,
+    "boundary": "Fixture process file-access check, not hostile-code OS isolation or production authorization"
+  },
+  "retrieval_diagnostics": {
+    "expected_evidence_hits": 33,
+    "expected_evidence_count": 50,
+    "retrieved_count": 75,
+    "scope_violations": 0,
+    "identical_ranked_evidence_cases": 25,
+    "fact_accuracy": null,
+    "impact_recall": null,
+    "impact_precision": null
+  },
+  "answers": {
+    "baseline_unknown_count": 25,
+    "adapter_unknown_count": 25,
+    "known_case_abstentions": [
+      "BRE182-001",
+      "BRE182-002",
+      "BRE182-003",
+      "BRE182-004",
+      "BRE182-005",
+      "BRE182-006",
+      "BRE182-007",
+      "BRE182-008",
+      "BRE182-009",
+      "BRE182-010",
+      "BRE182-011",
+      "BRE182-012",
+      "BRE182-013",
+      "BRE182-014",
+      "BRE182-015",
+      "BRE182-016",
+      "BRE182-017",
+      "BRE182-018",
+      "BRE182-019",
+      "BRE182-020",
+      "BRE182-023",
+      "BRE182-024"
+    ],
+    "known_case_answer_successes": 0,
+    "unknown_cases": [
+      {
+        "case_id": "BRE182-021",
+        "baseline_label": "unknown",
+        "adapter_label": "unknown",
+        "adapter_citations_present": true,
+        "semantic_adjudication": "pending owner review"
+      },
+      {
+        "case_id": "BRE182-022",
+        "baseline_label": "unknown",
+        "adapter_label": "unknown",
+        "adapter_citations_present": true,
+        "semantic_adjudication": "pending owner review"
+      },
+      {
+        "case_id": "BRE182-025",
+        "baseline_label": "unknown",
+        "adapter_label": "unknown",
+        "adapter_citations_present": true,
+        "semantic_adjudication": "pending owner review"
+      }
+    ],
+    "unsupported_certainty_on_unknown": 0,
+    "current_fact_accuracy": null,
+    "correct_unknown_recall": null,
+    "reason": "Neither system generates or semantically adjudicates answers. Known abstentions are failures to answer. Unknown labels plus citations are a safety check, not adjudicated correct-unknown recall."
+  },
+  "lifecycle": {
+    "adapter_evidence": "demo.json and regression.log",
+    "baseline_current_reference_invalidation": "unsupported API",
+    "baseline_historical_read_api": "unsupported API",
+    "baseline_acl_replay": "unsupported API",
+    "fact_improvement_claim": false
+  },
+  "fork_patch_required": "no",
+  "fork_patch_scope": "fixture demonstration only",
+  "m3_comparison_run": false,
+  "owner_adjudication": "pending",
+  "verified_store_writes": 0,
+  "usage": {
+    "model_tokens": 0,
+    "provider_cost_usd": 0,
+    "cpu_cost": null,
+    "review_cost": null
+  },
+  "rows": [
+    {
+      "case_id": "BRE182-001",
+      "expected_label": "known",
+      "baseline": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "t-routes",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "middleware.ts",
+            "content_sha256": "a2e0e1be480a3e9372f281081bb96821b89bbadf4a08634291aece9b82c2fab4",
+            "locator": "L3-L14"
+          },
+          {
+            "document_id": "t-release",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "docs/PUBLIC-RELEASE.md",
+            "content_sha256": "18b8a52bd23d27d3e05157ca2020f289d63d7ffcfc27342f23905b71fcc62598",
+            "locator": "L3-L11"
+          },
+          {
+            "document_id": "t-quotas",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "docs/PUBLIC-RELEASE.md",
+            "content_sha256": "18b8a52bd23d27d3e05157ca2020f289d63d7ffcfc27342f23905b71fcc62598",
+            "locator": "L22-L29"
+          }
+        ],
+        "system_revision": "bre182-retriever-v1.0.0",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "adapter": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "t-routes",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "middleware.ts",
+            "content_sha256": "a2e0e1be480a3e9372f281081bb96821b89bbadf4a08634291aece9b82c2fab4",
+            "locator": "L3-L14",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:c27cf1b8-5629-fd2a-2c26-518d320d7f6a",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:473c0f50-6c79-38c6-2a6e-1ad57ea7af66",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:473c0f50-6c79-38c6-2a6e-1ad57ea7af66",
+              "status": "proposed",
+              "excerpt_sha256": "89b7b41d9b9f52a1a20e42484873c026962ea41690cbf68faeb39581c3e41aee"
+            }
+          },
+          {
+            "document_id": "t-release",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "docs/PUBLIC-RELEASE.md",
+            "content_sha256": "18b8a52bd23d27d3e05157ca2020f289d63d7ffcfc27342f23905b71fcc62598",
+            "locator": "L3-L11",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:d042aba4-8554-daa1-f329-6d705c451223",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:698d9c79-aa0a-952a-d856-34533dc9eaaa",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:698d9c79-aa0a-952a-d856-34533dc9eaaa",
+              "status": "proposed",
+              "excerpt_sha256": "afae768465a043b43a5e204e0032ca1a69d72453f5cfd75c4c4e53ba1ba8f11b"
+            }
+          },
+          {
+            "document_id": "t-quotas",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "docs/PUBLIC-RELEASE.md",
+            "content_sha256": "18b8a52bd23d27d3e05157ca2020f289d63d7ffcfc27342f23905b71fcc62598",
+            "locator": "L22-L29",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:082b2382-ef68-09d3-77db-9c1bbf19f0fc",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:5c041a3a-6b63-e9af-25ec-ebbc250e9be5",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:5c041a3a-6b63-e9af-25ec-ebbc250e9be5",
+              "status": "proposed",
+              "excerpt_sha256": "d985ccf2783a18a7dcc4a6e0c787b6f9c0571fd7891bad3650ed3db7e383c387"
+            }
+          }
+        ],
+        "system_revision": "bre201-fixture-sidecar-v1",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "diagnostics": {
+        "baseline": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 1,
+          "expected_evidence_count": 2,
+          "scope_violations": 0
+        },
+        "adapter": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 1,
+          "expected_evidence_count": 2,
+          "scope_violations": 0
+        }
+      }
+    },
+    {
+      "case_id": "BRE182-002",
+      "expected_label": "known",
+      "baseline": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "t-routes",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "middleware.ts",
+            "content_sha256": "a2e0e1be480a3e9372f281081bb96821b89bbadf4a08634291aece9b82c2fab4",
+            "locator": "L3-L14"
+          },
+          {
+            "document_id": "t-seo",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "scripts/check-public-seo.mjs",
+            "content_sha256": "7b96c244e7c5a74fcaad6d395ba052526f43985ea867536707b28fef8c837bdd",
+            "locator": "L19-L28"
+          },
+          {
+            "document_id": "t-release",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "docs/PUBLIC-RELEASE.md",
+            "content_sha256": "18b8a52bd23d27d3e05157ca2020f289d63d7ffcfc27342f23905b71fcc62598",
+            "locator": "L3-L11"
+          }
+        ],
+        "system_revision": "bre182-retriever-v1.0.0",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "adapter": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "t-routes",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "middleware.ts",
+            "content_sha256": "a2e0e1be480a3e9372f281081bb96821b89bbadf4a08634291aece9b82c2fab4",
+            "locator": "L3-L14",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:c27cf1b8-5629-fd2a-2c26-518d320d7f6a",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:473c0f50-6c79-38c6-2a6e-1ad57ea7af66",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:473c0f50-6c79-38c6-2a6e-1ad57ea7af66",
+              "status": "proposed",
+              "excerpt_sha256": "89b7b41d9b9f52a1a20e42484873c026962ea41690cbf68faeb39581c3e41aee"
+            }
+          },
+          {
+            "document_id": "t-seo",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "scripts/check-public-seo.mjs",
+            "content_sha256": "7b96c244e7c5a74fcaad6d395ba052526f43985ea867536707b28fef8c837bdd",
+            "locator": "L19-L28",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:e2cdae5d-10bc-c1bf-63c1-3c853d6b75bf",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:37843923-8f78-fce3-db70-d3194b3c606e",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:37843923-8f78-fce3-db70-d3194b3c606e",
+              "status": "proposed",
+              "excerpt_sha256": "38d232ab4962a3422c1973b7a1f14b2381a4e5b81ba68d13dc8c4088d8bd2e50"
+            }
+          },
+          {
+            "document_id": "t-release",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "docs/PUBLIC-RELEASE.md",
+            "content_sha256": "18b8a52bd23d27d3e05157ca2020f289d63d7ffcfc27342f23905b71fcc62598",
+            "locator": "L3-L11",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:d042aba4-8554-daa1-f329-6d705c451223",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:698d9c79-aa0a-952a-d856-34533dc9eaaa",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:698d9c79-aa0a-952a-d856-34533dc9eaaa",
+              "status": "proposed",
+              "excerpt_sha256": "afae768465a043b43a5e204e0032ca1a69d72453f5cfd75c4c4e53ba1ba8f11b"
+            }
+          }
+        ],
+        "system_revision": "bre201-fixture-sidecar-v1",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "diagnostics": {
+        "baseline": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 1,
+          "expected_evidence_count": 1,
+          "scope_violations": 0
+        },
+        "adapter": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 1,
+          "expected_evidence_count": 1,
+          "scope_violations": 0
+        }
+      }
+    },
+    {
+      "case_id": "BRE182-003",
+      "expected_label": "known",
+      "baseline": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "a-quality-plan",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "README.md",
+            "content_sha256": "803d63a4e34f2538f57fac54795fcb9fa91cc5283fd6eabd613e40d60434afc8",
+            "locator": "L98-L98"
+          },
+          {
+            "document_id": "a-queue-old",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/decisions/ADR-003-text-to-image-to-3d.md",
+            "content_sha256": "dd314b404fbd2d38fd920de5fa938c0f6b0b5852259098ec8efabad911692673",
+            "locator": "L25-L27"
+          },
+          {
+            "document_id": "a-profiles",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/handoffs/BRE-153-mesh-qa.md",
+            "content_sha256": "c5f53170837d35b6988402070ab927bf0390b3572a3261a6e9c388e201f21b4e",
+            "locator": "L49-L71"
+          }
+        ],
+        "system_revision": "bre182-retriever-v1.0.0",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "adapter": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "a-quality-plan",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "README.md",
+            "content_sha256": "803d63a4e34f2538f57fac54795fcb9fa91cc5283fd6eabd613e40d60434afc8",
+            "locator": "L98-L98",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:697d9720-d4ad-3115-e9b3-4923f17ef787",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:5bcdd73f-76ae-5af9-c3d3-12689aa615a3",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:5bcdd73f-76ae-5af9-c3d3-12689aa615a3",
+              "status": "proposed",
+              "excerpt_sha256": "1537f4682fd7063cc9f8003eef7276b322b57b1e2f985191fea766bc8e48ef4e"
+            }
+          },
+          {
+            "document_id": "a-queue-old",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/decisions/ADR-003-text-to-image-to-3d.md",
+            "content_sha256": "dd314b404fbd2d38fd920de5fa938c0f6b0b5852259098ec8efabad911692673",
+            "locator": "L25-L27",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:2a5999d9-44f7-70e0-1529-c6e23cd834a7",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:54c7e2f1-1bb6-f2fc-e2ba-571662041d94",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:54c7e2f1-1bb6-f2fc-e2ba-571662041d94",
+              "status": "proposed",
+              "excerpt_sha256": "7d348a8d95c4b652630050d878a0fba4be86978b4fca592a4b40e7dcd81a7293"
+            }
+          },
+          {
+            "document_id": "a-profiles",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/handoffs/BRE-153-mesh-qa.md",
+            "content_sha256": "c5f53170837d35b6988402070ab927bf0390b3572a3261a6e9c388e201f21b4e",
+            "locator": "L49-L71",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:cac198c5-47da-d0ec-bcf7-0d7b191d7b60",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:ac13f56b-0e4b-551a-8ea3-6170feed2c02",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:ac13f56b-0e4b-551a-8ea3-6170feed2c02",
+              "status": "proposed",
+              "excerpt_sha256": "81b7df15012e2344e9c54c15b0ce2bda61cacf4416bbfef6d4bd2de6c29a4679"
+            }
+          }
+        ],
+        "system_revision": "bre201-fixture-sidecar-v1",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "diagnostics": {
+        "baseline": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 1,
+          "expected_evidence_count": 3,
+          "scope_violations": 0
+        },
+        "adapter": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 1,
+          "expected_evidence_count": 3,
+          "scope_violations": 0
+        }
+      }
+    },
+    {
+      "case_id": "BRE182-004",
+      "expected_label": "known",
+      "baseline": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "a-image-seam",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/decisions/ADR-003-text-to-image-to-3d.md",
+            "content_sha256": "dd314b404fbd2d38fd920de5fa938c0f6b0b5852259098ec8efabad911692673",
+            "locator": "L9-L9"
+          },
+          {
+            "document_id": "a-readme",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "README.md",
+            "content_sha256": "803d63a4e34f2538f57fac54795fcb9fa91cc5283fd6eabd613e40d60434afc8",
+            "locator": "L3-L7"
+          },
+          {
+            "document_id": "a-candidate",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/handoffs/BRE-165-phase3-e2e-acceptance.md",
+            "content_sha256": "825572d30627faa7843574cdd5df349ccab04fa434f1c4223af6f2b0f541915c",
+            "locator": "L3-L9"
+          }
+        ],
+        "system_revision": "bre182-retriever-v1.0.0",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "adapter": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "a-image-seam",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/decisions/ADR-003-text-to-image-to-3d.md",
+            "content_sha256": "dd314b404fbd2d38fd920de5fa938c0f6b0b5852259098ec8efabad911692673",
+            "locator": "L9-L9",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:9f68b1c4-1048-f711-7d3f-2853e1f785b2",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:b638191e-b659-fa02-09c9-c85ffd05c0d4",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:b638191e-b659-fa02-09c9-c85ffd05c0d4",
+              "status": "proposed",
+              "excerpt_sha256": "ecf64f351c956932e4023b3d4bec795d20af9c15945cd04752fe2de1fb04255c"
+            }
+          },
+          {
+            "document_id": "a-readme",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "README.md",
+            "content_sha256": "803d63a4e34f2538f57fac54795fcb9fa91cc5283fd6eabd613e40d60434afc8",
+            "locator": "L3-L7",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:efa43381-fa71-b1fb-711e-5346ca4cd860",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:672f4581-4498-ea7c-418a-10917b1aea2e",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:672f4581-4498-ea7c-418a-10917b1aea2e",
+              "status": "proposed",
+              "excerpt_sha256": "c4335be2fe69be008dc12d55bc630dd097fac92814208c4d1e9a67f86db99889"
+            }
+          },
+          {
+            "document_id": "a-candidate",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/handoffs/BRE-165-phase3-e2e-acceptance.md",
+            "content_sha256": "825572d30627faa7843574cdd5df349ccab04fa434f1c4223af6f2b0f541915c",
+            "locator": "L3-L9",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:f2e546d6-81bc-838c-ead4-abfd2f9af5be",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:01d5bc8f-79d9-36be-ec5a-a6519c8ce42c",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:01d5bc8f-79d9-36be-ec5a-a6519c8ce42c",
+              "status": "proposed",
+              "excerpt_sha256": "35393ae4fe18a8f8974ed7e5a6437a4b4bcf0865b67bc4a6aa88d7d52615d015"
+            }
+          }
+        ],
+        "system_revision": "bre201-fixture-sidecar-v1",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "diagnostics": {
+        "baseline": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 1,
+          "expected_evidence_count": 2,
+          "scope_violations": 0
+        },
+        "adapter": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 1,
+          "expected_evidence_count": 2,
+          "scope_violations": 0
+        }
+      }
+    },
+    {
+      "case_id": "BRE182-005",
+      "expected_label": "known",
+      "baseline": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "a-color",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/handoffs/BRE-160-nl-color-texture.md",
+            "content_sha256": "c7bc184ef3d579d3423e0df29a206badb51d2bd8fb53bf7dd243ba79977d4cdc",
+            "locator": "L9-L23"
+          },
+          {
+            "document_id": "a-skills",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "README.md",
+            "content_sha256": "803d63a4e34f2538f57fac54795fcb9fa91cc5283fd6eabd613e40d60434afc8",
+            "locator": "L70-L82"
+          },
+          {
+            "document_id": "a-lineage",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/handoffs/BRE-162-asset-edit-lineage.md",
+            "content_sha256": "36da19754667b52491e6e8e629ddc1321a72dbbbec3dbb85751fcf084371a389",
+            "locator": "L3-L11"
+          }
+        ],
+        "system_revision": "bre182-retriever-v1.0.0",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "adapter": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "a-color",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/handoffs/BRE-160-nl-color-texture.md",
+            "content_sha256": "c7bc184ef3d579d3423e0df29a206badb51d2bd8fb53bf7dd243ba79977d4cdc",
+            "locator": "L9-L23",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:146178ad-7782-2e81-1685-e1d89c410879",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:4a51a7fe-2c88-c8f4-d22b-174c6ae16197",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:4a51a7fe-2c88-c8f4-d22b-174c6ae16197",
+              "status": "proposed",
+              "excerpt_sha256": "a6bc1acea2fd8b8751126bdbaeacdb00a37e689632aea03689e8bc57930801b0"
+            }
+          },
+          {
+            "document_id": "a-skills",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "README.md",
+            "content_sha256": "803d63a4e34f2538f57fac54795fcb9fa91cc5283fd6eabd613e40d60434afc8",
+            "locator": "L70-L82",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:51ed15bf-4d82-14c0-6e22-1ff877f9ff87",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:588c1097-35c2-6dc6-aa12-32be101546dc",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:588c1097-35c2-6dc6-aa12-32be101546dc",
+              "status": "proposed",
+              "excerpt_sha256": "911f20cba6abacf31cdc108001dd7365ebecdc928bb30b720dbd6550f178592a"
+            }
+          },
+          {
+            "document_id": "a-lineage",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/handoffs/BRE-162-asset-edit-lineage.md",
+            "content_sha256": "36da19754667b52491e6e8e629ddc1321a72dbbbec3dbb85751fcf084371a389",
+            "locator": "L3-L11",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:47e252af-ac54-62d7-6a92-0740a4686e0d",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:82025252-4d90-e966-6f34-47f22f1e252a",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:82025252-4d90-e966-6f34-47f22f1e252a",
+              "status": "proposed",
+              "excerpt_sha256": "9bd5d2afe762cbe5d28912a9e2aa8317ff79b6aecec9069b4882d1def3402d39"
+            }
+          }
+        ],
+        "system_revision": "bre201-fixture-sidecar-v1",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "diagnostics": {
+        "baseline": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 1,
+          "expected_evidence_count": 2,
+          "scope_violations": 0
+        },
+        "adapter": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 1,
+          "expected_evidence_count": 2,
+          "scope_violations": 0
+        }
+      }
+    },
+    {
+      "case_id": "BRE182-006",
+      "expected_label": "known",
+      "baseline": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "a-report",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/handoffs/BRE-153-mesh-qa.md",
+            "content_sha256": "c5f53170837d35b6988402070ab927bf0390b3572a3261a6e9c388e201f21b4e",
+            "locator": "L3-L3"
+          },
+          {
+            "document_id": "a-readme",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "README.md",
+            "content_sha256": "803d63a4e34f2538f57fac54795fcb9fa91cc5283fd6eabd613e40d60434afc8",
+            "locator": "L3-L7"
+          },
+          {
+            "document_id": "a-profiles",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/handoffs/BRE-153-mesh-qa.md",
+            "content_sha256": "c5f53170837d35b6988402070ab927bf0390b3572a3261a6e9c388e201f21b4e",
+            "locator": "L49-L71"
+          }
+        ],
+        "system_revision": "bre182-retriever-v1.0.0",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "adapter": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "a-report",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/handoffs/BRE-153-mesh-qa.md",
+            "content_sha256": "c5f53170837d35b6988402070ab927bf0390b3572a3261a6e9c388e201f21b4e",
+            "locator": "L3-L3",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:bac6d5d0-e120-a9b8-8a9a-358a4b78ff91",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:1e7e417d-55c3-922f-6f9a-42f3a1ccb94f",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:1e7e417d-55c3-922f-6f9a-42f3a1ccb94f",
+              "status": "proposed",
+              "excerpt_sha256": "5b0ece2077fe527fab383474ff10e4d7c3ff6ef2a669ee960f5f964698b4f9e3"
+            }
+          },
+          {
+            "document_id": "a-readme",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "README.md",
+            "content_sha256": "803d63a4e34f2538f57fac54795fcb9fa91cc5283fd6eabd613e40d60434afc8",
+            "locator": "L3-L7",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:efa43381-fa71-b1fb-711e-5346ca4cd860",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:672f4581-4498-ea7c-418a-10917b1aea2e",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:672f4581-4498-ea7c-418a-10917b1aea2e",
+              "status": "proposed",
+              "excerpt_sha256": "c4335be2fe69be008dc12d55bc630dd097fac92814208c4d1e9a67f86db99889"
+            }
+          },
+          {
+            "document_id": "a-profiles",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/handoffs/BRE-153-mesh-qa.md",
+            "content_sha256": "c5f53170837d35b6988402070ab927bf0390b3572a3261a6e9c388e201f21b4e",
+            "locator": "L49-L71",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:cac198c5-47da-d0ec-bcf7-0d7b191d7b60",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:ac13f56b-0e4b-551a-8ea3-6170feed2c02",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:ac13f56b-0e4b-551a-8ea3-6170feed2c02",
+              "status": "proposed",
+              "excerpt_sha256": "81b7df15012e2344e9c54c15b0ce2bda61cacf4416bbfef6d4bd2de6c29a4679"
+            }
+          }
+        ],
+        "system_revision": "bre201-fixture-sidecar-v1",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "diagnostics": {
+        "baseline": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 1,
+          "expected_evidence_count": 1,
+          "scope_violations": 0
+        },
+        "adapter": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 1,
+          "expected_evidence_count": 1,
+          "scope_violations": 0
+        }
+      }
+    },
+    {
+      "case_id": "BRE182-007",
+      "expected_label": "known",
+      "baseline": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "a-report",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/handoffs/BRE-153-mesh-qa.md",
+            "content_sha256": "c5f53170837d35b6988402070ab927bf0390b3572a3261a6e9c388e201f21b4e",
+            "locator": "L3-L3"
+          },
+          {
+            "document_id": "a-profiles",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/handoffs/BRE-153-mesh-qa.md",
+            "content_sha256": "c5f53170837d35b6988402070ab927bf0390b3572a3261a6e9c388e201f21b4e",
+            "locator": "L49-L71"
+          },
+          {
+            "document_id": "a-quality-plan",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "README.md",
+            "content_sha256": "803d63a4e34f2538f57fac54795fcb9fa91cc5283fd6eabd613e40d60434afc8",
+            "locator": "L98-L98"
+          }
+        ],
+        "system_revision": "bre182-retriever-v1.0.0",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "adapter": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "a-report",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/handoffs/BRE-153-mesh-qa.md",
+            "content_sha256": "c5f53170837d35b6988402070ab927bf0390b3572a3261a6e9c388e201f21b4e",
+            "locator": "L3-L3",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:bac6d5d0-e120-a9b8-8a9a-358a4b78ff91",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:1e7e417d-55c3-922f-6f9a-42f3a1ccb94f",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:1e7e417d-55c3-922f-6f9a-42f3a1ccb94f",
+              "status": "proposed",
+              "excerpt_sha256": "5b0ece2077fe527fab383474ff10e4d7c3ff6ef2a669ee960f5f964698b4f9e3"
+            }
+          },
+          {
+            "document_id": "a-profiles",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/handoffs/BRE-153-mesh-qa.md",
+            "content_sha256": "c5f53170837d35b6988402070ab927bf0390b3572a3261a6e9c388e201f21b4e",
+            "locator": "L49-L71",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:cac198c5-47da-d0ec-bcf7-0d7b191d7b60",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:ac13f56b-0e4b-551a-8ea3-6170feed2c02",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:ac13f56b-0e4b-551a-8ea3-6170feed2c02",
+              "status": "proposed",
+              "excerpt_sha256": "81b7df15012e2344e9c54c15b0ce2bda61cacf4416bbfef6d4bd2de6c29a4679"
+            }
+          },
+          {
+            "document_id": "a-quality-plan",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "README.md",
+            "content_sha256": "803d63a4e34f2538f57fac54795fcb9fa91cc5283fd6eabd613e40d60434afc8",
+            "locator": "L98-L98",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:697d9720-d4ad-3115-e9b3-4923f17ef787",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:5bcdd73f-76ae-5af9-c3d3-12689aa615a3",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:5bcdd73f-76ae-5af9-c3d3-12689aa615a3",
+              "status": "proposed",
+              "excerpt_sha256": "1537f4682fd7063cc9f8003eef7276b322b57b1e2f985191fea766bc8e48ef4e"
+            }
+          }
+        ],
+        "system_revision": "bre201-fixture-sidecar-v1",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "diagnostics": {
+        "baseline": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 2,
+          "expected_evidence_count": 2,
+          "scope_violations": 0
+        },
+        "adapter": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 2,
+          "expected_evidence_count": 2,
+          "scope_violations": 0
+        }
+      }
+    },
+    {
+      "case_id": "BRE182-008",
+      "expected_label": "known",
+      "baseline": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "a-report",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/handoffs/BRE-153-mesh-qa.md",
+            "content_sha256": "c5f53170837d35b6988402070ab927bf0390b3572a3261a6e9c388e201f21b4e",
+            "locator": "L3-L3"
+          },
+          {
+            "document_id": "a-profiles",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/handoffs/BRE-153-mesh-qa.md",
+            "content_sha256": "c5f53170837d35b6988402070ab927bf0390b3572a3261a6e9c388e201f21b4e",
+            "locator": "L49-L71"
+          },
+          {
+            "document_id": "h-generation",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "e4cd37d5b3e19d2144927189bab0fd523755a27c",
+            "path": "workers/gpu/src/threed_agent_gpu/trellis2.py",
+            "content_sha256": "14faa5b96431727c3124ca5a8e1b838f03de1ab4d2fe63edc69b271818df3138",
+            "locator": "L139-L148"
+          }
+        ],
+        "system_revision": "bre182-retriever-v1.0.0",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "adapter": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "a-report",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/handoffs/BRE-153-mesh-qa.md",
+            "content_sha256": "c5f53170837d35b6988402070ab927bf0390b3572a3261a6e9c388e201f21b4e",
+            "locator": "L3-L3",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:bac6d5d0-e120-a9b8-8a9a-358a4b78ff91",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:1e7e417d-55c3-922f-6f9a-42f3a1ccb94f",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:1e7e417d-55c3-922f-6f9a-42f3a1ccb94f",
+              "status": "proposed",
+              "excerpt_sha256": "5b0ece2077fe527fab383474ff10e4d7c3ff6ef2a669ee960f5f964698b4f9e3"
+            }
+          },
+          {
+            "document_id": "a-profiles",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/handoffs/BRE-153-mesh-qa.md",
+            "content_sha256": "c5f53170837d35b6988402070ab927bf0390b3572a3261a6e9c388e201f21b4e",
+            "locator": "L49-L71",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:cac198c5-47da-d0ec-bcf7-0d7b191d7b60",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:ac13f56b-0e4b-551a-8ea3-6170feed2c02",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:ac13f56b-0e4b-551a-8ea3-6170feed2c02",
+              "status": "proposed",
+              "excerpt_sha256": "81b7df15012e2344e9c54c15b0ce2bda61cacf4416bbfef6d4bd2de6c29a4679"
+            }
+          },
+          {
+            "document_id": "h-generation",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "e4cd37d5b3e19d2144927189bab0fd523755a27c",
+            "path": "workers/gpu/src/threed_agent_gpu/trellis2.py",
+            "content_sha256": "14faa5b96431727c3124ca5a8e1b838f03de1ab4d2fe63edc69b271818df3138",
+            "locator": "L139-L148",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:b684adac-218f-f456-4adc-92d6e4c9845b",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:d2f1b7f6-2401-a673-13c9-5eb5214ac90d",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:d2f1b7f6-2401-a673-13c9-5eb5214ac90d",
+              "status": "proposed",
+              "excerpt_sha256": "baf50cb0daf8f7dc72f3cd1c3424b95b262be0c3859a15b7d5eb387f95019377"
+            }
+          }
+        ],
+        "system_revision": "bre201-fixture-sidecar-v1",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "diagnostics": {
+        "baseline": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 1,
+          "expected_evidence_count": 1,
+          "scope_violations": 0
+        },
+        "adapter": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 1,
+          "expected_evidence_count": 1,
+          "scope_violations": 0
+        }
+      }
+    },
+    {
+      "case_id": "BRE182-009",
+      "expected_label": "known",
+      "baseline": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "a-lineage",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/handoffs/BRE-162-asset-edit-lineage.md",
+            "content_sha256": "36da19754667b52491e6e8e629ddc1321a72dbbbec3dbb85751fcf084371a389",
+            "locator": "L3-L11"
+          },
+          {
+            "document_id": "a-report",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/handoffs/BRE-153-mesh-qa.md",
+            "content_sha256": "c5f53170837d35b6988402070ab927bf0390b3572a3261a6e9c388e201f21b4e",
+            "locator": "L3-L3"
+          },
+          {
+            "document_id": "a-queue-old",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/decisions/ADR-003-text-to-image-to-3d.md",
+            "content_sha256": "dd314b404fbd2d38fd920de5fa938c0f6b0b5852259098ec8efabad911692673",
+            "locator": "L25-L27"
+          }
+        ],
+        "system_revision": "bre182-retriever-v1.0.0",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "adapter": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "a-lineage",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/handoffs/BRE-162-asset-edit-lineage.md",
+            "content_sha256": "36da19754667b52491e6e8e629ddc1321a72dbbbec3dbb85751fcf084371a389",
+            "locator": "L3-L11",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:47e252af-ac54-62d7-6a92-0740a4686e0d",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:82025252-4d90-e966-6f34-47f22f1e252a",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:82025252-4d90-e966-6f34-47f22f1e252a",
+              "status": "proposed",
+              "excerpt_sha256": "9bd5d2afe762cbe5d28912a9e2aa8317ff79b6aecec9069b4882d1def3402d39"
+            }
+          },
+          {
+            "document_id": "a-report",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/handoffs/BRE-153-mesh-qa.md",
+            "content_sha256": "c5f53170837d35b6988402070ab927bf0390b3572a3261a6e9c388e201f21b4e",
+            "locator": "L3-L3",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:bac6d5d0-e120-a9b8-8a9a-358a4b78ff91",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:1e7e417d-55c3-922f-6f9a-42f3a1ccb94f",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:1e7e417d-55c3-922f-6f9a-42f3a1ccb94f",
+              "status": "proposed",
+              "excerpt_sha256": "5b0ece2077fe527fab383474ff10e4d7c3ff6ef2a669ee960f5f964698b4f9e3"
+            }
+          },
+          {
+            "document_id": "a-queue-old",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/decisions/ADR-003-text-to-image-to-3d.md",
+            "content_sha256": "dd314b404fbd2d38fd920de5fa938c0f6b0b5852259098ec8efabad911692673",
+            "locator": "L25-L27",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:2a5999d9-44f7-70e0-1529-c6e23cd834a7",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:54c7e2f1-1bb6-f2fc-e2ba-571662041d94",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:54c7e2f1-1bb6-f2fc-e2ba-571662041d94",
+              "status": "proposed",
+              "excerpt_sha256": "7d348a8d95c4b652630050d878a0fba4be86978b4fca592a4b40e7dcd81a7293"
+            }
+          }
+        ],
+        "system_revision": "bre201-fixture-sidecar-v1",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "diagnostics": {
+        "baseline": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 1,
+          "expected_evidence_count": 1,
+          "scope_violations": 0
+        },
+        "adapter": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 1,
+          "expected_evidence_count": 1,
+          "scope_violations": 0
+        }
+      }
+    },
+    {
+      "case_id": "BRE182-010",
+      "expected_label": "known",
+      "baseline": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "h-draft-tests",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "0951dd6e8592038d9d7699673a2948ff9810e593",
+            "path": "tests/onboarding-browser.mjs",
+            "content_sha256": "8f35989397552a10400ddc693f98d121a7bd669c2d6527b8a1468fc5f297c61c",
+            "locator": "L25-L36"
+          },
+          {
+            "document_id": "h-draft-fix",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "0951dd6e8592038d9d7699673a2948ff9810e593",
+            "path": "app/account.tsx",
+            "content_sha256": "1feca57aac386f8db556b1694aaa827ea612076f0517bff86394ef491847e8ec",
+            "locator": "L44-L44"
+          },
+          {
+            "document_id": "t-quotas",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "docs/PUBLIC-RELEASE.md",
+            "content_sha256": "18b8a52bd23d27d3e05157ca2020f289d63d7ffcfc27342f23905b71fcc62598",
+            "locator": "L22-L29"
+          }
+        ],
+        "system_revision": "bre182-retriever-v1.0.0",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "adapter": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "h-draft-tests",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "0951dd6e8592038d9d7699673a2948ff9810e593",
+            "path": "tests/onboarding-browser.mjs",
+            "content_sha256": "8f35989397552a10400ddc693f98d121a7bd669c2d6527b8a1468fc5f297c61c",
+            "locator": "L25-L36",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:3c92b4dd-557b-6941-43ad-a813814d6dfd",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:40f62bd4-8e5b-917b-7f53-08ea7b51e5aa",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:40f62bd4-8e5b-917b-7f53-08ea7b51e5aa",
+              "status": "proposed",
+              "excerpt_sha256": "5575034d320c3c2483e7931558b6b99c06e3cb76b9d3df95cb7fcdbbf05dcd18"
+            }
+          },
+          {
+            "document_id": "h-draft-fix",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "0951dd6e8592038d9d7699673a2948ff9810e593",
+            "path": "app/account.tsx",
+            "content_sha256": "1feca57aac386f8db556b1694aaa827ea612076f0517bff86394ef491847e8ec",
+            "locator": "L44-L44",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:1a2b7e32-06bf-cac0-5117-1bbc2a7c2ae3",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:fb6c10eb-c2c6-e98d-48c4-4d394fbcd521",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:fb6c10eb-c2c6-e98d-48c4-4d394fbcd521",
+              "status": "proposed",
+              "excerpt_sha256": "20f2b565b4cc3b0726e3391357ccb261a25b371e2b2118dacf0cbcfc5d845dc4"
+            }
+          },
+          {
+            "document_id": "t-quotas",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "docs/PUBLIC-RELEASE.md",
+            "content_sha256": "18b8a52bd23d27d3e05157ca2020f289d63d7ffcfc27342f23905b71fcc62598",
+            "locator": "L22-L29",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:082b2382-ef68-09d3-77db-9c1bbf19f0fc",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:5c041a3a-6b63-e9af-25ec-ebbc250e9be5",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:5c041a3a-6b63-e9af-25ec-ebbc250e9be5",
+              "status": "proposed",
+              "excerpt_sha256": "d985ccf2783a18a7dcc4a6e0c787b6f9c0571fd7891bad3650ed3db7e383c387"
+            }
+          }
+        ],
+        "system_revision": "bre201-fixture-sidecar-v1",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "diagnostics": {
+        "baseline": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 2,
+          "expected_evidence_count": 3,
+          "scope_violations": 0
+        },
+        "adapter": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 2,
+          "expected_evidence_count": 3,
+          "scope_violations": 0
+        }
+      }
+    },
+    {
+      "case_id": "BRE182-011",
+      "expected_label": "known",
+      "baseline": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "t-quotas",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "docs/PUBLIC-RELEASE.md",
+            "content_sha256": "18b8a52bd23d27d3e05157ca2020f289d63d7ffcfc27342f23905b71fcc62598",
+            "locator": "L22-L29"
+          },
+          {
+            "document_id": "h-draft-tests",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "0951dd6e8592038d9d7699673a2948ff9810e593",
+            "path": "tests/onboarding-browser.mjs",
+            "content_sha256": "8f35989397552a10400ddc693f98d121a7bd669c2d6527b8a1468fc5f297c61c",
+            "locator": "L25-L36"
+          },
+          {
+            "document_id": "t-drafts",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "lib/onboarding-drafts.ts",
+            "content_sha256": "d772288937273d491ee10b6c6ba6fe1dfac94948a90d6c2fc35eabb839afc2a7",
+            "locator": "L1-L20"
+          }
+        ],
+        "system_revision": "bre182-retriever-v1.0.0",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "adapter": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "t-quotas",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "docs/PUBLIC-RELEASE.md",
+            "content_sha256": "18b8a52bd23d27d3e05157ca2020f289d63d7ffcfc27342f23905b71fcc62598",
+            "locator": "L22-L29",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:082b2382-ef68-09d3-77db-9c1bbf19f0fc",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:5c041a3a-6b63-e9af-25ec-ebbc250e9be5",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:5c041a3a-6b63-e9af-25ec-ebbc250e9be5",
+              "status": "proposed",
+              "excerpt_sha256": "d985ccf2783a18a7dcc4a6e0c787b6f9c0571fd7891bad3650ed3db7e383c387"
+            }
+          },
+          {
+            "document_id": "h-draft-tests",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "0951dd6e8592038d9d7699673a2948ff9810e593",
+            "path": "tests/onboarding-browser.mjs",
+            "content_sha256": "8f35989397552a10400ddc693f98d121a7bd669c2d6527b8a1468fc5f297c61c",
+            "locator": "L25-L36",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:3c92b4dd-557b-6941-43ad-a813814d6dfd",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:40f62bd4-8e5b-917b-7f53-08ea7b51e5aa",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:40f62bd4-8e5b-917b-7f53-08ea7b51e5aa",
+              "status": "proposed",
+              "excerpt_sha256": "5575034d320c3c2483e7931558b6b99c06e3cb76b9d3df95cb7fcdbbf05dcd18"
+            }
+          },
+          {
+            "document_id": "t-drafts",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "lib/onboarding-drafts.ts",
+            "content_sha256": "d772288937273d491ee10b6c6ba6fe1dfac94948a90d6c2fc35eabb839afc2a7",
+            "locator": "L1-L20",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:3a77e921-1aa4-b720-396e-c5f883778692",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:b4fd8faf-7693-009a-4037-f5f9f62d37b1",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:b4fd8faf-7693-009a-4037-f5f9f62d37b1",
+              "status": "proposed",
+              "excerpt_sha256": "a170b3d323b4a1aefa2460fd40f69e50b30ee81edd80580993a84522a6b65d50"
+            }
+          }
+        ],
+        "system_revision": "bre201-fixture-sidecar-v1",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "diagnostics": {
+        "baseline": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 1,
+          "expected_evidence_count": 1,
+          "scope_violations": 0
+        },
+        "adapter": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 1,
+          "expected_evidence_count": 1,
+          "scope_violations": 0
+        }
+      }
+    },
+    {
+      "case_id": "BRE182-012",
+      "expected_label": "known",
+      "baseline": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "a-alpha",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "README.md",
+            "content_sha256": "803d63a4e34f2538f57fac54795fcb9fa91cc5283fd6eabd613e40d60434afc8",
+            "locator": "L11-L11"
+          },
+          {
+            "document_id": "a-alpha-handoff",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/handoffs/BRE-169-internal-alpha.md",
+            "content_sha256": "40835c5b6f22b64c4da3d5b8d4648458824935b403bc24527fd0eb171cf2d8c8",
+            "locator": "L3-L5"
+          },
+          {
+            "document_id": "a-license",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/release/model-license-inventory.md",
+            "content_sha256": "a9f143f3bffc1dfd1e34842fa7119df2e6aa8505efb5aca30a53d98c3aacf6be",
+            "locator": "L18-L18"
+          }
+        ],
+        "system_revision": "bre182-retriever-v1.0.0",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "adapter": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "a-alpha",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "README.md",
+            "content_sha256": "803d63a4e34f2538f57fac54795fcb9fa91cc5283fd6eabd613e40d60434afc8",
+            "locator": "L11-L11",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:cab3d1d8-a518-d419-fa2e-9fee0a9150a4",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:c1c11a8c-3c7e-f706-8730-d015d2fead87",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:c1c11a8c-3c7e-f706-8730-d015d2fead87",
+              "status": "proposed",
+              "excerpt_sha256": "58dd2b25137caf9afc8258d46ae66d659d159a6c7cdf8edb0eb70d90842e30d8"
+            }
+          },
+          {
+            "document_id": "a-alpha-handoff",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/handoffs/BRE-169-internal-alpha.md",
+            "content_sha256": "40835c5b6f22b64c4da3d5b8d4648458824935b403bc24527fd0eb171cf2d8c8",
+            "locator": "L3-L5",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:5476b467-3f2a-f559-78be-00366eea7d44",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:7db90a9f-ebe7-1f61-e233-89e103ffbb68",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:7db90a9f-ebe7-1f61-e233-89e103ffbb68",
+              "status": "proposed",
+              "excerpt_sha256": "5969edd7bbf42a616c7383ef838ec70760c37589b4e5211d29ac190c6fd03b4c"
+            }
+          },
+          {
+            "document_id": "a-license",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/release/model-license-inventory.md",
+            "content_sha256": "a9f143f3bffc1dfd1e34842fa7119df2e6aa8505efb5aca30a53d98c3aacf6be",
+            "locator": "L18-L18",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:8cfeb078-c686-d09d-c810-bca43e5bac36",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:5190c60c-df6f-f010-3646-a2149b022e2a",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:5190c60c-df6f-f010-3646-a2149b022e2a",
+              "status": "proposed",
+              "excerpt_sha256": "9a07656d9d5915c0f433f83ea591f53aa0e0865b6095871f638607048fab5c61"
+            }
+          }
+        ],
+        "system_revision": "bre201-fixture-sidecar-v1",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "diagnostics": {
+        "baseline": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 2,
+          "expected_evidence_count": 3,
+          "scope_violations": 0
+        },
+        "adapter": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 2,
+          "expected_evidence_count": 3,
+          "scope_violations": 0
+        }
+      }
+    },
+    {
+      "case_id": "BRE182-013",
+      "expected_label": "known",
+      "baseline": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "a-license",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/release/model-license-inventory.md",
+            "content_sha256": "a9f143f3bffc1dfd1e34842fa7119df2e6aa8505efb5aca30a53d98c3aacf6be",
+            "locator": "L18-L18"
+          },
+          {
+            "document_id": "a-readme",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "README.md",
+            "content_sha256": "803d63a4e34f2538f57fac54795fcb9fa91cc5283fd6eabd613e40d60434afc8",
+            "locator": "L3-L7"
+          },
+          {
+            "document_id": "a-license-open",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/release/model-license-inventory.md",
+            "content_sha256": "a9f143f3bffc1dfd1e34842fa7119df2e6aa8505efb5aca30a53d98c3aacf6be",
+            "locator": "L67-L73"
+          }
+        ],
+        "system_revision": "bre182-retriever-v1.0.0",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "adapter": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "a-license",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/release/model-license-inventory.md",
+            "content_sha256": "a9f143f3bffc1dfd1e34842fa7119df2e6aa8505efb5aca30a53d98c3aacf6be",
+            "locator": "L18-L18",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:8cfeb078-c686-d09d-c810-bca43e5bac36",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:5190c60c-df6f-f010-3646-a2149b022e2a",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:5190c60c-df6f-f010-3646-a2149b022e2a",
+              "status": "proposed",
+              "excerpt_sha256": "9a07656d9d5915c0f433f83ea591f53aa0e0865b6095871f638607048fab5c61"
+            }
+          },
+          {
+            "document_id": "a-readme",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "README.md",
+            "content_sha256": "803d63a4e34f2538f57fac54795fcb9fa91cc5283fd6eabd613e40d60434afc8",
+            "locator": "L3-L7",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:efa43381-fa71-b1fb-711e-5346ca4cd860",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:672f4581-4498-ea7c-418a-10917b1aea2e",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:672f4581-4498-ea7c-418a-10917b1aea2e",
+              "status": "proposed",
+              "excerpt_sha256": "c4335be2fe69be008dc12d55bc630dd097fac92814208c4d1e9a67f86db99889"
+            }
+          },
+          {
+            "document_id": "a-license-open",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/release/model-license-inventory.md",
+            "content_sha256": "a9f143f3bffc1dfd1e34842fa7119df2e6aa8505efb5aca30a53d98c3aacf6be",
+            "locator": "L67-L73",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:aafe2a62-c6fe-da81-e769-a301d71618f7",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:710c0efc-c1d6-9761-3b38-e835b4f3c3c3",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:710c0efc-c1d6-9761-3b38-e835b4f3c3c3",
+              "status": "proposed",
+              "excerpt_sha256": "d6e917d78d8d244072c8ce92c12ef882ed69722669edf680e3b8ee308b97beee"
+            }
+          }
+        ],
+        "system_revision": "bre201-fixture-sidecar-v1",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "diagnostics": {
+        "baseline": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 3,
+          "expected_evidence_count": 4,
+          "scope_violations": 0
+        },
+        "adapter": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 3,
+          "expected_evidence_count": 4,
+          "scope_violations": 0
+        }
+      }
+    },
+    {
+      "case_id": "BRE182-014",
+      "expected_label": "known",
+      "baseline": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "t-release",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "docs/PUBLIC-RELEASE.md",
+            "content_sha256": "18b8a52bd23d27d3e05157ca2020f289d63d7ffcfc27342f23905b71fcc62598",
+            "locator": "L3-L11"
+          },
+          {
+            "document_id": "t-quotas",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "docs/PUBLIC-RELEASE.md",
+            "content_sha256": "18b8a52bd23d27d3e05157ca2020f289d63d7ffcfc27342f23905b71fcc62598",
+            "locator": "L22-L29"
+          },
+          {
+            "document_id": "t-identity",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "AGENTS.md",
+            "content_sha256": "a7f119f642963a670c7aaa75d83ea02eacf7d4faf88b9bcd500feb4c056a0b41",
+            "locator": "L13-L23"
+          }
+        ],
+        "system_revision": "bre182-retriever-v1.0.0",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "adapter": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "t-release",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "docs/PUBLIC-RELEASE.md",
+            "content_sha256": "18b8a52bd23d27d3e05157ca2020f289d63d7ffcfc27342f23905b71fcc62598",
+            "locator": "L3-L11",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:d042aba4-8554-daa1-f329-6d705c451223",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:698d9c79-aa0a-952a-d856-34533dc9eaaa",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:698d9c79-aa0a-952a-d856-34533dc9eaaa",
+              "status": "proposed",
+              "excerpt_sha256": "afae768465a043b43a5e204e0032ca1a69d72453f5cfd75c4c4e53ba1ba8f11b"
+            }
+          },
+          {
+            "document_id": "t-quotas",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "docs/PUBLIC-RELEASE.md",
+            "content_sha256": "18b8a52bd23d27d3e05157ca2020f289d63d7ffcfc27342f23905b71fcc62598",
+            "locator": "L22-L29",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:082b2382-ef68-09d3-77db-9c1bbf19f0fc",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:5c041a3a-6b63-e9af-25ec-ebbc250e9be5",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:5c041a3a-6b63-e9af-25ec-ebbc250e9be5",
+              "status": "proposed",
+              "excerpt_sha256": "d985ccf2783a18a7dcc4a6e0c787b6f9c0571fd7891bad3650ed3db7e383c387"
+            }
+          },
+          {
+            "document_id": "t-identity",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "AGENTS.md",
+            "content_sha256": "a7f119f642963a670c7aaa75d83ea02eacf7d4faf88b9bcd500feb4c056a0b41",
+            "locator": "L13-L23",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:33d743b8-7a63-0fb9-5639-d6b5d6dd6515",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:a429a2d6-f72b-c0e9-e61d-9d0716f7fd19",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:a429a2d6-f72b-c0e9-e61d-9d0716f7fd19",
+              "status": "proposed",
+              "excerpt_sha256": "e41a62206b74bc35165513889ad6eb2e40e6f9d2c19fa30579ffa3a9f6bd1425"
+            }
+          }
+        ],
+        "system_revision": "bre201-fixture-sidecar-v1",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "diagnostics": {
+        "baseline": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 2,
+          "expected_evidence_count": 2,
+          "scope_violations": 0
+        },
+        "adapter": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 2,
+          "expected_evidence_count": 2,
+          "scope_violations": 0
+        }
+      }
+    },
+    {
+      "case_id": "BRE182-015",
+      "expected_label": "known",
+      "baseline": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "a-worker",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "README.md",
+            "content_sha256": "803d63a4e34f2538f57fac54795fcb9fa91cc5283fd6eabd613e40d60434afc8",
+            "locator": "L58-L60"
+          },
+          {
+            "document_id": "a-fake",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "README.md",
+            "content_sha256": "803d63a4e34f2538f57fac54795fcb9fa91cc5283fd6eabd613e40d60434afc8",
+            "locator": "L54-L54"
+          },
+          {
+            "document_id": "h-t2i",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "f7e0667ecd5c8227361c2b331def7f10492b6b64",
+            "path": "docs/handoffs/BRE-149-real-text-to-image.md",
+            "content_sha256": "83ebe0a4524283a3df5693b6e414bd9f9b738eed7c9709608096e21f05c917c6",
+            "locator": "L3-L7"
+          }
+        ],
+        "system_revision": "bre182-retriever-v1.0.0",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "adapter": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "a-worker",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "README.md",
+            "content_sha256": "803d63a4e34f2538f57fac54795fcb9fa91cc5283fd6eabd613e40d60434afc8",
+            "locator": "L58-L60",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:aa23a916-264d-26f3-0d17-81fcf6042ecc",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:e50466a5-7be4-b471-75d3-90b660655b67",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:e50466a5-7be4-b471-75d3-90b660655b67",
+              "status": "proposed",
+              "excerpt_sha256": "84ba0f3cc55ca48217ef647bc5ba802f5b9c5277c554060e1719d58a05b54c45"
+            }
+          },
+          {
+            "document_id": "a-fake",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "README.md",
+            "content_sha256": "803d63a4e34f2538f57fac54795fcb9fa91cc5283fd6eabd613e40d60434afc8",
+            "locator": "L54-L54",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:8e6a89ee-a69b-c86e-23c7-2e53de4e2d02",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:aeb0ca53-33a1-0d6e-ed1e-245be5864617",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:aeb0ca53-33a1-0d6e-ed1e-245be5864617",
+              "status": "proposed",
+              "excerpt_sha256": "f6489a5e954945fff868b88566df23f4afd7bc1e7839c290986820a16b6ba5cc"
+            }
+          },
+          {
+            "document_id": "h-t2i",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "f7e0667ecd5c8227361c2b331def7f10492b6b64",
+            "path": "docs/handoffs/BRE-149-real-text-to-image.md",
+            "content_sha256": "83ebe0a4524283a3df5693b6e414bd9f9b738eed7c9709608096e21f05c917c6",
+            "locator": "L3-L7",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:ba9e5187-2fe0-4a75-3ce2-167a14264808",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:10a986ef-7d3c-c49b-c23c-da45f0c37a5c",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:10a986ef-7d3c-c49b-c23c-da45f0c37a5c",
+              "status": "proposed",
+              "excerpt_sha256": "29d32b014edc7c97c283cad02e291483c14a9d90cb21d84d0a373b93cfb95136"
+            }
+          }
+        ],
+        "system_revision": "bre201-fixture-sidecar-v1",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "diagnostics": {
+        "baseline": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 1,
+          "expected_evidence_count": 2,
+          "scope_violations": 0
+        },
+        "adapter": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 1,
+          "expected_evidence_count": 2,
+          "scope_violations": 0
+        }
+      }
+    },
+    {
+      "case_id": "BRE182-016",
+      "expected_label": "known",
+      "baseline": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "a-readme",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "README.md",
+            "content_sha256": "803d63a4e34f2538f57fac54795fcb9fa91cc5283fd6eabd613e40d60434afc8",
+            "locator": "L3-L7"
+          },
+          {
+            "document_id": "t-identity",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "AGENTS.md",
+            "content_sha256": "a7f119f642963a670c7aaa75d83ea02eacf7d4faf88b9bcd500feb4c056a0b41",
+            "locator": "L13-L23"
+          },
+          {
+            "document_id": "a-fake",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "README.md",
+            "content_sha256": "803d63a4e34f2538f57fac54795fcb9fa91cc5283fd6eabd613e40d60434afc8",
+            "locator": "L54-L54"
+          }
+        ],
+        "system_revision": "bre182-retriever-v1.0.0",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "adapter": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "a-readme",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "README.md",
+            "content_sha256": "803d63a4e34f2538f57fac54795fcb9fa91cc5283fd6eabd613e40d60434afc8",
+            "locator": "L3-L7",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:efa43381-fa71-b1fb-711e-5346ca4cd860",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:672f4581-4498-ea7c-418a-10917b1aea2e",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:672f4581-4498-ea7c-418a-10917b1aea2e",
+              "status": "proposed",
+              "excerpt_sha256": "c4335be2fe69be008dc12d55bc630dd097fac92814208c4d1e9a67f86db99889"
+            }
+          },
+          {
+            "document_id": "t-identity",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "AGENTS.md",
+            "content_sha256": "a7f119f642963a670c7aaa75d83ea02eacf7d4faf88b9bcd500feb4c056a0b41",
+            "locator": "L13-L23",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:33d743b8-7a63-0fb9-5639-d6b5d6dd6515",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:a429a2d6-f72b-c0e9-e61d-9d0716f7fd19",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:a429a2d6-f72b-c0e9-e61d-9d0716f7fd19",
+              "status": "proposed",
+              "excerpt_sha256": "e41a62206b74bc35165513889ad6eb2e40e6f9d2c19fa30579ffa3a9f6bd1425"
+            }
+          },
+          {
+            "document_id": "a-fake",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "README.md",
+            "content_sha256": "803d63a4e34f2538f57fac54795fcb9fa91cc5283fd6eabd613e40d60434afc8",
+            "locator": "L54-L54",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:8e6a89ee-a69b-c86e-23c7-2e53de4e2d02",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:aeb0ca53-33a1-0d6e-ed1e-245be5864617",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:aeb0ca53-33a1-0d6e-ed1e-245be5864617",
+              "status": "proposed",
+              "excerpt_sha256": "f6489a5e954945fff868b88566df23f4afd7bc1e7839c290986820a16b6ba5cc"
+            }
+          }
+        ],
+        "system_revision": "bre201-fixture-sidecar-v1",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "diagnostics": {
+        "baseline": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 1,
+          "expected_evidence_count": 3,
+          "scope_violations": 0
+        },
+        "adapter": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 1,
+          "expected_evidence_count": 3,
+          "scope_violations": 0
+        }
+      }
+    },
+    {
+      "case_id": "BRE182-017",
+      "expected_label": "known",
+      "baseline": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "a-alpha-handoff",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/handoffs/BRE-169-internal-alpha.md",
+            "content_sha256": "40835c5b6f22b64c4da3d5b8d4648458824935b403bc24527fd0eb171cf2d8c8",
+            "locator": "L3-L5"
+          },
+          {
+            "document_id": "a-readme",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "README.md",
+            "content_sha256": "803d63a4e34f2538f57fac54795fcb9fa91cc5283fd6eabd613e40d60434afc8",
+            "locator": "L3-L7"
+          },
+          {
+            "document_id": "t-release",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "docs/PUBLIC-RELEASE.md",
+            "content_sha256": "18b8a52bd23d27d3e05157ca2020f289d63d7ffcfc27342f23905b71fcc62598",
+            "locator": "L3-L11"
+          }
+        ],
+        "system_revision": "bre182-retriever-v1.0.0",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "adapter": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "a-alpha-handoff",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/handoffs/BRE-169-internal-alpha.md",
+            "content_sha256": "40835c5b6f22b64c4da3d5b8d4648458824935b403bc24527fd0eb171cf2d8c8",
+            "locator": "L3-L5",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:5476b467-3f2a-f559-78be-00366eea7d44",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:7db90a9f-ebe7-1f61-e233-89e103ffbb68",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:7db90a9f-ebe7-1f61-e233-89e103ffbb68",
+              "status": "proposed",
+              "excerpt_sha256": "5969edd7bbf42a616c7383ef838ec70760c37589b4e5211d29ac190c6fd03b4c"
+            }
+          },
+          {
+            "document_id": "a-readme",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "README.md",
+            "content_sha256": "803d63a4e34f2538f57fac54795fcb9fa91cc5283fd6eabd613e40d60434afc8",
+            "locator": "L3-L7",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:efa43381-fa71-b1fb-711e-5346ca4cd860",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:672f4581-4498-ea7c-418a-10917b1aea2e",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:672f4581-4498-ea7c-418a-10917b1aea2e",
+              "status": "proposed",
+              "excerpt_sha256": "c4335be2fe69be008dc12d55bc630dd097fac92814208c4d1e9a67f86db99889"
+            }
+          },
+          {
+            "document_id": "t-release",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "docs/PUBLIC-RELEASE.md",
+            "content_sha256": "18b8a52bd23d27d3e05157ca2020f289d63d7ffcfc27342f23905b71fcc62598",
+            "locator": "L3-L11",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:d042aba4-8554-daa1-f329-6d705c451223",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:698d9c79-aa0a-952a-d856-34533dc9eaaa",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:698d9c79-aa0a-952a-d856-34533dc9eaaa",
+              "status": "proposed",
+              "excerpt_sha256": "afae768465a043b43a5e204e0032ca1a69d72453f5cfd75c4c4e53ba1ba8f11b"
+            }
+          }
+        ],
+        "system_revision": "bre201-fixture-sidecar-v1",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "diagnostics": {
+        "baseline": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 1,
+          "expected_evidence_count": 2,
+          "scope_violations": 0
+        },
+        "adapter": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 1,
+          "expected_evidence_count": 2,
+          "scope_violations": 0
+        }
+      }
+    },
+    {
+      "case_id": "BRE182-018",
+      "expected_label": "known",
+      "baseline": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "a-fake",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "README.md",
+            "content_sha256": "803d63a4e34f2538f57fac54795fcb9fa91cc5283fd6eabd613e40d60434afc8",
+            "locator": "L54-L54"
+          },
+          {
+            "document_id": "a-candidate",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/handoffs/BRE-165-phase3-e2e-acceptance.md",
+            "content_sha256": "825572d30627faa7843574cdd5df349ccab04fa434f1c4223af6f2b0f541915c",
+            "locator": "L3-L9"
+          },
+          {
+            "document_id": "a-alpha",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "README.md",
+            "content_sha256": "803d63a4e34f2538f57fac54795fcb9fa91cc5283fd6eabd613e40d60434afc8",
+            "locator": "L11-L11"
+          }
+        ],
+        "system_revision": "bre182-retriever-v1.0.0",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "adapter": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "a-fake",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "README.md",
+            "content_sha256": "803d63a4e34f2538f57fac54795fcb9fa91cc5283fd6eabd613e40d60434afc8",
+            "locator": "L54-L54",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:8e6a89ee-a69b-c86e-23c7-2e53de4e2d02",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:aeb0ca53-33a1-0d6e-ed1e-245be5864617",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:aeb0ca53-33a1-0d6e-ed1e-245be5864617",
+              "status": "proposed",
+              "excerpt_sha256": "f6489a5e954945fff868b88566df23f4afd7bc1e7839c290986820a16b6ba5cc"
+            }
+          },
+          {
+            "document_id": "a-candidate",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/handoffs/BRE-165-phase3-e2e-acceptance.md",
+            "content_sha256": "825572d30627faa7843574cdd5df349ccab04fa434f1c4223af6f2b0f541915c",
+            "locator": "L3-L9",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:f2e546d6-81bc-838c-ead4-abfd2f9af5be",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:01d5bc8f-79d9-36be-ec5a-a6519c8ce42c",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:01d5bc8f-79d9-36be-ec5a-a6519c8ce42c",
+              "status": "proposed",
+              "excerpt_sha256": "35393ae4fe18a8f8974ed7e5a6437a4b4bcf0865b67bc4a6aa88d7d52615d015"
+            }
+          },
+          {
+            "document_id": "a-alpha",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "README.md",
+            "content_sha256": "803d63a4e34f2538f57fac54795fcb9fa91cc5283fd6eabd613e40d60434afc8",
+            "locator": "L11-L11",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:cab3d1d8-a518-d419-fa2e-9fee0a9150a4",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:c1c11a8c-3c7e-f706-8730-d015d2fead87",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:c1c11a8c-3c7e-f706-8730-d015d2fead87",
+              "status": "proposed",
+              "excerpt_sha256": "58dd2b25137caf9afc8258d46ae66d659d159a6c7cdf8edb0eb70d90842e30d8"
+            }
+          }
+        ],
+        "system_revision": "bre201-fixture-sidecar-v1",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "diagnostics": {
+        "baseline": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 1,
+          "expected_evidence_count": 3,
+          "scope_violations": 0
+        },
+        "adapter": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 1,
+          "expected_evidence_count": 3,
+          "scope_violations": 0
+        }
+      }
+    },
+    {
+      "case_id": "BRE182-019",
+      "expected_label": "known",
+      "baseline": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "a-candidate",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/handoffs/BRE-165-phase3-e2e-acceptance.md",
+            "content_sha256": "825572d30627faa7843574cdd5df349ccab04fa434f1c4223af6f2b0f541915c",
+            "locator": "L3-L9"
+          },
+          {
+            "document_id": "a-alpha-handoff",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/handoffs/BRE-169-internal-alpha.md",
+            "content_sha256": "40835c5b6f22b64c4da3d5b8d4648458824935b403bc24527fd0eb171cf2d8c8",
+            "locator": "L3-L5"
+          },
+          {
+            "document_id": "a-queue-old",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/decisions/ADR-003-text-to-image-to-3d.md",
+            "content_sha256": "dd314b404fbd2d38fd920de5fa938c0f6b0b5852259098ec8efabad911692673",
+            "locator": "L25-L27"
+          }
+        ],
+        "system_revision": "bre182-retriever-v1.0.0",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "adapter": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "a-candidate",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/handoffs/BRE-165-phase3-e2e-acceptance.md",
+            "content_sha256": "825572d30627faa7843574cdd5df349ccab04fa434f1c4223af6f2b0f541915c",
+            "locator": "L3-L9",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:f2e546d6-81bc-838c-ead4-abfd2f9af5be",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:01d5bc8f-79d9-36be-ec5a-a6519c8ce42c",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:01d5bc8f-79d9-36be-ec5a-a6519c8ce42c",
+              "status": "proposed",
+              "excerpt_sha256": "35393ae4fe18a8f8974ed7e5a6437a4b4bcf0865b67bc4a6aa88d7d52615d015"
+            }
+          },
+          {
+            "document_id": "a-alpha-handoff",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/handoffs/BRE-169-internal-alpha.md",
+            "content_sha256": "40835c5b6f22b64c4da3d5b8d4648458824935b403bc24527fd0eb171cf2d8c8",
+            "locator": "L3-L5",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:5476b467-3f2a-f559-78be-00366eea7d44",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:7db90a9f-ebe7-1f61-e233-89e103ffbb68",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:7db90a9f-ebe7-1f61-e233-89e103ffbb68",
+              "status": "proposed",
+              "excerpt_sha256": "5969edd7bbf42a616c7383ef838ec70760c37589b4e5211d29ac190c6fd03b4c"
+            }
+          },
+          {
+            "document_id": "a-queue-old",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/decisions/ADR-003-text-to-image-to-3d.md",
+            "content_sha256": "dd314b404fbd2d38fd920de5fa938c0f6b0b5852259098ec8efabad911692673",
+            "locator": "L25-L27",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:2a5999d9-44f7-70e0-1529-c6e23cd834a7",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:54c7e2f1-1bb6-f2fc-e2ba-571662041d94",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:54c7e2f1-1bb6-f2fc-e2ba-571662041d94",
+              "status": "proposed",
+              "excerpt_sha256": "7d348a8d95c4b652630050d878a0fba4be86978b4fca592a4b40e7dcd81a7293"
+            }
+          }
+        ],
+        "system_revision": "bre201-fixture-sidecar-v1",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "diagnostics": {
+        "baseline": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 1,
+          "expected_evidence_count": 1,
+          "scope_violations": 0
+        },
+        "adapter": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 1,
+          "expected_evidence_count": 1,
+          "scope_violations": 0
+        }
+      }
+    },
+    {
+      "case_id": "BRE182-020",
+      "expected_label": "known",
+      "baseline": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "a-worker",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "README.md",
+            "content_sha256": "803d63a4e34f2538f57fac54795fcb9fa91cc5283fd6eabd613e40d60434afc8",
+            "locator": "L58-L60"
+          },
+          {
+            "document_id": "a-queue-old",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/decisions/ADR-003-text-to-image-to-3d.md",
+            "content_sha256": "dd314b404fbd2d38fd920de5fa938c0f6b0b5852259098ec8efabad911692673",
+            "locator": "L25-L27"
+          },
+          {
+            "document_id": "a-fake",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "README.md",
+            "content_sha256": "803d63a4e34f2538f57fac54795fcb9fa91cc5283fd6eabd613e40d60434afc8",
+            "locator": "L54-L54"
+          }
+        ],
+        "system_revision": "bre182-retriever-v1.0.0",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "adapter": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "a-worker",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "README.md",
+            "content_sha256": "803d63a4e34f2538f57fac54795fcb9fa91cc5283fd6eabd613e40d60434afc8",
+            "locator": "L58-L60",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:aa23a916-264d-26f3-0d17-81fcf6042ecc",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:e50466a5-7be4-b471-75d3-90b660655b67",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:e50466a5-7be4-b471-75d3-90b660655b67",
+              "status": "proposed",
+              "excerpt_sha256": "84ba0f3cc55ca48217ef647bc5ba802f5b9c5277c554060e1719d58a05b54c45"
+            }
+          },
+          {
+            "document_id": "a-queue-old",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/decisions/ADR-003-text-to-image-to-3d.md",
+            "content_sha256": "dd314b404fbd2d38fd920de5fa938c0f6b0b5852259098ec8efabad911692673",
+            "locator": "L25-L27",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:2a5999d9-44f7-70e0-1529-c6e23cd834a7",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:54c7e2f1-1bb6-f2fc-e2ba-571662041d94",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:54c7e2f1-1bb6-f2fc-e2ba-571662041d94",
+              "status": "proposed",
+              "excerpt_sha256": "7d348a8d95c4b652630050d878a0fba4be86978b4fca592a4b40e7dcd81a7293"
+            }
+          },
+          {
+            "document_id": "a-fake",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "README.md",
+            "content_sha256": "803d63a4e34f2538f57fac54795fcb9fa91cc5283fd6eabd613e40d60434afc8",
+            "locator": "L54-L54",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:8e6a89ee-a69b-c86e-23c7-2e53de4e2d02",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:aeb0ca53-33a1-0d6e-ed1e-245be5864617",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:aeb0ca53-33a1-0d6e-ed1e-245be5864617",
+              "status": "proposed",
+              "excerpt_sha256": "f6489a5e954945fff868b88566df23f4afd7bc1e7839c290986820a16b6ba5cc"
+            }
+          }
+        ],
+        "system_revision": "bre201-fixture-sidecar-v1",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "diagnostics": {
+        "baseline": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 2,
+          "expected_evidence_count": 2,
+          "scope_violations": 0
+        },
+        "adapter": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 2,
+          "expected_evidence_count": 2,
+          "scope_violations": 0
+        }
+      }
+    },
+    {
+      "case_id": "BRE182-021",
+      "expected_label": "unknown",
+      "baseline": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "t-release",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "docs/PUBLIC-RELEASE.md",
+            "content_sha256": "18b8a52bd23d27d3e05157ca2020f289d63d7ffcfc27342f23905b71fcc62598",
+            "locator": "L3-L11"
+          },
+          {
+            "document_id": "t-quotas",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "docs/PUBLIC-RELEASE.md",
+            "content_sha256": "18b8a52bd23d27d3e05157ca2020f289d63d7ffcfc27342f23905b71fcc62598",
+            "locator": "L22-L29"
+          },
+          {
+            "document_id": "t-routes",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "middleware.ts",
+            "content_sha256": "a2e0e1be480a3e9372f281081bb96821b89bbadf4a08634291aece9b82c2fab4",
+            "locator": "L3-L14"
+          }
+        ],
+        "system_revision": "bre182-retriever-v1.0.0",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "adapter": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "t-release",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "docs/PUBLIC-RELEASE.md",
+            "content_sha256": "18b8a52bd23d27d3e05157ca2020f289d63d7ffcfc27342f23905b71fcc62598",
+            "locator": "L3-L11",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:d042aba4-8554-daa1-f329-6d705c451223",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:698d9c79-aa0a-952a-d856-34533dc9eaaa",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:698d9c79-aa0a-952a-d856-34533dc9eaaa",
+              "status": "proposed",
+              "excerpt_sha256": "afae768465a043b43a5e204e0032ca1a69d72453f5cfd75c4c4e53ba1ba8f11b"
+            }
+          },
+          {
+            "document_id": "t-quotas",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "docs/PUBLIC-RELEASE.md",
+            "content_sha256": "18b8a52bd23d27d3e05157ca2020f289d63d7ffcfc27342f23905b71fcc62598",
+            "locator": "L22-L29",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:082b2382-ef68-09d3-77db-9c1bbf19f0fc",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:5c041a3a-6b63-e9af-25ec-ebbc250e9be5",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:5c041a3a-6b63-e9af-25ec-ebbc250e9be5",
+              "status": "proposed",
+              "excerpt_sha256": "d985ccf2783a18a7dcc4a6e0c787b6f9c0571fd7891bad3650ed3db7e383c387"
+            }
+          },
+          {
+            "document_id": "t-routes",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "middleware.ts",
+            "content_sha256": "a2e0e1be480a3e9372f281081bb96821b89bbadf4a08634291aece9b82c2fab4",
+            "locator": "L3-L14",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:c27cf1b8-5629-fd2a-2c26-518d320d7f6a",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:473c0f50-6c79-38c6-2a6e-1ad57ea7af66",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:473c0f50-6c79-38c6-2a6e-1ad57ea7af66",
+              "status": "proposed",
+              "excerpt_sha256": "89b7b41d9b9f52a1a20e42484873c026962ea41690cbf68faeb39581c3e41aee"
+            }
+          }
+        ],
+        "system_revision": "bre201-fixture-sidecar-v1",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "diagnostics": {
+        "baseline": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 1,
+          "expected_evidence_count": 1,
+          "scope_violations": 0
+        },
+        "adapter": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 1,
+          "expected_evidence_count": 1,
+          "scope_violations": 0
+        }
+      }
+    },
+    {
+      "case_id": "BRE182-022",
+      "expected_label": "unknown",
+      "baseline": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "t-noindex",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "scripts/check-preview-noindex.mjs",
+            "content_sha256": "119e2f753760c755d3f54c6083cf983bf90a62919065f107a96b25fbbae67f8f",
+            "locator": "L7-L21"
+          },
+          {
+            "document_id": "t-identity",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "AGENTS.md",
+            "content_sha256": "a7f119f642963a670c7aaa75d83ea02eacf7d4faf88b9bcd500feb4c056a0b41",
+            "locator": "L13-L23"
+          },
+          {
+            "document_id": "t-worker",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "README.md",
+            "content_sha256": "348a1af9e5293bb8e75395aa7545fc4674c627d0ecb9ffa538b5147f61f89399",
+            "locator": "L10-L12"
+          }
+        ],
+        "system_revision": "bre182-retriever-v1.0.0",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "adapter": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "t-noindex",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "scripts/check-preview-noindex.mjs",
+            "content_sha256": "119e2f753760c755d3f54c6083cf983bf90a62919065f107a96b25fbbae67f8f",
+            "locator": "L7-L21",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:02b3943e-7de0-85f5-e6f0-d102e46d9725",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:5bf0517e-b333-b4dc-7d54-ee35ea628109",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:5bf0517e-b333-b4dc-7d54-ee35ea628109",
+              "status": "proposed",
+              "excerpt_sha256": "8899ae16cb29bfc660716529a2dcf8a351e4eb6df3414c49b00f48f3ac72d4dc"
+            }
+          },
+          {
+            "document_id": "t-identity",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "AGENTS.md",
+            "content_sha256": "a7f119f642963a670c7aaa75d83ea02eacf7d4faf88b9bcd500feb4c056a0b41",
+            "locator": "L13-L23",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:33d743b8-7a63-0fb9-5639-d6b5d6dd6515",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:a429a2d6-f72b-c0e9-e61d-9d0716f7fd19",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:a429a2d6-f72b-c0e9-e61d-9d0716f7fd19",
+              "status": "proposed",
+              "excerpt_sha256": "e41a62206b74bc35165513889ad6eb2e40e6f9d2c19fa30579ffa3a9f6bd1425"
+            }
+          },
+          {
+            "document_id": "t-worker",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "README.md",
+            "content_sha256": "348a1af9e5293bb8e75395aa7545fc4674c627d0ecb9ffa538b5147f61f89399",
+            "locator": "L10-L12",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:615d1502-5c4f-fbd0-8918-a56109aa1dba",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:80a2837d-0dd4-a7dd-7c36-1529e077189e",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:80a2837d-0dd4-a7dd-7c36-1529e077189e",
+              "status": "proposed",
+              "excerpt_sha256": "0375fe3461dd1d26f526263052befab2060ca068116dc34471b8e3b42b060781"
+            }
+          }
+        ],
+        "system_revision": "bre201-fixture-sidecar-v1",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "diagnostics": {
+        "baseline": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 1,
+          "expected_evidence_count": 3,
+          "scope_violations": 0
+        },
+        "adapter": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 1,
+          "expected_evidence_count": 3,
+          "scope_violations": 0
+        }
+      }
+    },
+    {
+      "case_id": "BRE182-023",
+      "expected_label": "known",
+      "baseline": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "t-quotas",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "docs/PUBLIC-RELEASE.md",
+            "content_sha256": "18b8a52bd23d27d3e05157ca2020f289d63d7ffcfc27342f23905b71fcc62598",
+            "locator": "L22-L29"
+          },
+          {
+            "document_id": "t-release",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "docs/PUBLIC-RELEASE.md",
+            "content_sha256": "18b8a52bd23d27d3e05157ca2020f289d63d7ffcfc27342f23905b71fcc62598",
+            "locator": "L3-L11"
+          },
+          {
+            "document_id": "t-routes",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "middleware.ts",
+            "content_sha256": "a2e0e1be480a3e9372f281081bb96821b89bbadf4a08634291aece9b82c2fab4",
+            "locator": "L3-L14"
+          }
+        ],
+        "system_revision": "bre182-retriever-v1.0.0",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "adapter": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "t-quotas",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "docs/PUBLIC-RELEASE.md",
+            "content_sha256": "18b8a52bd23d27d3e05157ca2020f289d63d7ffcfc27342f23905b71fcc62598",
+            "locator": "L22-L29",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:082b2382-ef68-09d3-77db-9c1bbf19f0fc",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:5c041a3a-6b63-e9af-25ec-ebbc250e9be5",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:5c041a3a-6b63-e9af-25ec-ebbc250e9be5",
+              "status": "proposed",
+              "excerpt_sha256": "d985ccf2783a18a7dcc4a6e0c787b6f9c0571fd7891bad3650ed3db7e383c387"
+            }
+          },
+          {
+            "document_id": "t-release",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "docs/PUBLIC-RELEASE.md",
+            "content_sha256": "18b8a52bd23d27d3e05157ca2020f289d63d7ffcfc27342f23905b71fcc62598",
+            "locator": "L3-L11",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:d042aba4-8554-daa1-f329-6d705c451223",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:698d9c79-aa0a-952a-d856-34533dc9eaaa",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:698d9c79-aa0a-952a-d856-34533dc9eaaa",
+              "status": "proposed",
+              "excerpt_sha256": "afae768465a043b43a5e204e0032ca1a69d72453f5cfd75c4c4e53ba1ba8f11b"
+            }
+          },
+          {
+            "document_id": "t-routes",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "middleware.ts",
+            "content_sha256": "a2e0e1be480a3e9372f281081bb96821b89bbadf4a08634291aece9b82c2fab4",
+            "locator": "L3-L14",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:c27cf1b8-5629-fd2a-2c26-518d320d7f6a",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:473c0f50-6c79-38c6-2a6e-1ad57ea7af66",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:473c0f50-6c79-38c6-2a6e-1ad57ea7af66",
+              "status": "proposed",
+              "excerpt_sha256": "89b7b41d9b9f52a1a20e42484873c026962ea41690cbf68faeb39581c3e41aee"
+            }
+          }
+        ],
+        "system_revision": "bre201-fixture-sidecar-v1",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "diagnostics": {
+        "baseline": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 2,
+          "expected_evidence_count": 2,
+          "scope_violations": 0
+        },
+        "adapter": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 2,
+          "expected_evidence_count": 2,
+          "scope_violations": 0
+        }
+      }
+    },
+    {
+      "case_id": "BRE182-024",
+      "expected_label": "known",
+      "baseline": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "t-identity",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "AGENTS.md",
+            "content_sha256": "a7f119f642963a670c7aaa75d83ea02eacf7d4faf88b9bcd500feb4c056a0b41",
+            "locator": "L13-L23"
+          },
+          {
+            "document_id": "t-worker",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "README.md",
+            "content_sha256": "348a1af9e5293bb8e75395aa7545fc4674c627d0ecb9ffa538b5147f61f89399",
+            "locator": "L10-L12"
+          },
+          {
+            "document_id": "t-release",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "docs/PUBLIC-RELEASE.md",
+            "content_sha256": "18b8a52bd23d27d3e05157ca2020f289d63d7ffcfc27342f23905b71fcc62598",
+            "locator": "L3-L11"
+          }
+        ],
+        "system_revision": "bre182-retriever-v1.0.0",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "adapter": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "t-identity",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "AGENTS.md",
+            "content_sha256": "a7f119f642963a670c7aaa75d83ea02eacf7d4faf88b9bcd500feb4c056a0b41",
+            "locator": "L13-L23",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:33d743b8-7a63-0fb9-5639-d6b5d6dd6515",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:a429a2d6-f72b-c0e9-e61d-9d0716f7fd19",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:a429a2d6-f72b-c0e9-e61d-9d0716f7fd19",
+              "status": "proposed",
+              "excerpt_sha256": "e41a62206b74bc35165513889ad6eb2e40e6f9d2c19fa30579ffa3a9f6bd1425"
+            }
+          },
+          {
+            "document_id": "t-worker",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "README.md",
+            "content_sha256": "348a1af9e5293bb8e75395aa7545fc4674c627d0ecb9ffa538b5147f61f89399",
+            "locator": "L10-L12",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:615d1502-5c4f-fbd0-8918-a56109aa1dba",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:80a2837d-0dd4-a7dd-7c36-1529e077189e",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:80a2837d-0dd4-a7dd-7c36-1529e077189e",
+              "status": "proposed",
+              "excerpt_sha256": "0375fe3461dd1d26f526263052befab2060ca068116dc34471b8e3b42b060781"
+            }
+          },
+          {
+            "document_id": "t-release",
+            "repo": "brentlee-personal/thingweave",
+            "commit": "561a823a3248a33f5fc9df3619e5c382cb5a50dd",
+            "path": "docs/PUBLIC-RELEASE.md",
+            "content_sha256": "18b8a52bd23d27d3e05157ca2020f289d63d7ffcfc27342f23905b71fcc62598",
+            "locator": "L3-L11",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:d042aba4-8554-daa1-f329-6d705c451223",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:698d9c79-aa0a-952a-d856-34533dc9eaaa",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:698d9c79-aa0a-952a-d856-34533dc9eaaa",
+              "status": "proposed",
+              "excerpt_sha256": "afae768465a043b43a5e204e0032ca1a69d72453f5cfd75c4c4e53ba1ba8f11b"
+            }
+          }
+        ],
+        "system_revision": "bre201-fixture-sidecar-v1",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "diagnostics": {
+        "baseline": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 1,
+          "expected_evidence_count": 2,
+          "scope_violations": 0
+        },
+        "adapter": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 1,
+          "expected_evidence_count": 2,
+          "scope_violations": 0
+        }
+      }
+    },
+    {
+      "case_id": "BRE182-025",
+      "expected_label": "unknown",
+      "baseline": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "a-candidate",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/handoffs/BRE-165-phase3-e2e-acceptance.md",
+            "content_sha256": "825572d30627faa7843574cdd5df349ccab04fa434f1c4223af6f2b0f541915c",
+            "locator": "L3-L9"
+          },
+          {
+            "document_id": "a-alpha",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "README.md",
+            "content_sha256": "803d63a4e34f2538f57fac54795fcb9fa91cc5283fd6eabd613e40d60434afc8",
+            "locator": "L11-L11"
+          },
+          {
+            "document_id": "a-fake",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "README.md",
+            "content_sha256": "803d63a4e34f2538f57fac54795fcb9fa91cc5283fd6eabd613e40d60434afc8",
+            "locator": "L54-L54"
+          }
+        ],
+        "system_revision": "bre182-retriever-v1.0.0",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "adapter": {
+        "label": "unknown",
+        "answer": "Unknown. This retrieval-only system returns source excerpts and does not adjudicate the requested conclusion. Retrieved contracts do not establish exhaustive external consumers, crawler outcomes, or current connectivity.",
+        "impact_targets": [],
+        "evidence_refs": [
+          {
+            "document_id": "a-candidate",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "docs/handoffs/BRE-165-phase3-e2e-acceptance.md",
+            "content_sha256": "825572d30627faa7843574cdd5df349ccab04fa434f1c4223af6f2b0f541915c",
+            "locator": "L3-L9",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:f2e546d6-81bc-838c-ead4-abfd2f9af5be",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:01d5bc8f-79d9-36be-ec5a-a6519c8ce42c",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:01d5bc8f-79d9-36be-ec5a-a6519c8ce42c",
+              "status": "proposed",
+              "excerpt_sha256": "35393ae4fe18a8f8974ed7e5a6437a4b4bcf0865b67bc4a6aa88d7d52615d015"
+            }
+          },
+          {
+            "document_id": "a-alpha",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "README.md",
+            "content_sha256": "803d63a4e34f2538f57fac54795fcb9fa91cc5283fd6eabd613e40d60434afc8",
+            "locator": "L11-L11",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:cab3d1d8-a518-d419-fa2e-9fee0a9150a4",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:c1c11a8c-3c7e-f706-8730-d015d2fead87",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:c1c11a8c-3c7e-f706-8730-d015d2fead87",
+              "status": "proposed",
+              "excerpt_sha256": "58dd2b25137caf9afc8258d46ae66d659d159a6c7cdf8edb0eb70d90842e30d8"
+            }
+          },
+          {
+            "document_id": "a-fake",
+            "repo": "brentlee-personal/3d-agent",
+            "commit": "173f88d651715a492ab2f2693a1ab811c5a2a367",
+            "path": "README.md",
+            "content_sha256": "803d63a4e34f2538f57fac54795fcb9fa91cc5283fd6eabd613e40d60434afc8",
+            "locator": "L54-L54",
+            "overlay": {
+              "source_id": "urn:semantic:bre201:fixture:knowledge-object:8e6a89ee-a69b-c86e-23c7-2e53de4e2d02",
+              "assertion_id": "urn:semantic:bre201:fixture:assertion:aeb0ca53-33a1-0d6e-ed1e-245be5864617",
+              "evidence_id": "urn:semantic:bre201:fixture:evidence:aeb0ca53-33a1-0d6e-ed1e-245be5864617",
+              "status": "proposed",
+              "excerpt_sha256": "f6489a5e954945fff868b88566df23f4afd7bc1e7839c290986820a16b6ba5cc"
+            }
+          }
+        ],
+        "system_revision": "bre201-fixture-sidecar-v1",
+        "timing_ms": null,
+        "model_tokens": 0,
+        "provider_cost_usd": 0,
+        "failure": null
+      },
+      "diagnostics": {
+        "baseline": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 1,
+          "expected_evidence_count": 1,
+          "scope_violations": 0
+        },
+        "adapter": {
+          "retrieved_count": 3,
+          "expected_evidence_hits": 1,
+          "expected_evidence_count": 1,
+          "scope_violations": 0
+        }
+      }
+    }
+  ]
+}

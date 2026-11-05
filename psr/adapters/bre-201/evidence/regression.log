@@ -1,0 +1,110 @@
+BRE-201 fixture regression
+observed_time=2026-11-05T10:54:52.667434+00:00
+command=BAS_ROOT=/Users/libin/repos/worktrees/bas-bre-201 node --test --test-reporter=tap tests/sidecar.test.js tests/comparison.test.cjs
+TAP version 13
+# Subtest: rename, current invalidation, historical read, revocation, and deletion execute through the public adapter
+ok 1 - rename, current invalidation, historical read, revocation, and deletion execute through the public adapter
+  ---
+  duration_ms: 3.223334
+  type: 'test'
+  ...
+# Subtest: all 25 frozen cases preserve retrieval identities and disclose all known abstentions
+ok 2 - all 25 frozen cases preserve retrieval identities and disclose all known abstentions
+  ---
+  duration_ms: 130.614167
+  type: 'test'
+  ...
+# Subtest: SUT rejects a request carrying evaluation labels
+ok 3 - SUT rejects a request carrying evaluation labels
+  ---
+  duration_ms: 27.036208
+  type: 'test'
+  ...
+# Subtest: all emitted records and ChangeSets validate untouched BAS schema
+ok 4 - all emitted records and ChangeSets validate untouched BAS schema
+  ---
+  duration_ms: 43.604541
+  type: 'test'
+  ...
+# Subtest: same-ID rename invalidates current citation; history and edit-back generations
+ok 5 - same-ID rename invalidates current citation; history and edit-back generations
+  ---
+  duration_ms: 1.021834
+  type: 'test'
+  ...
+# Subtest: sequence digest fence and higher unchanged no-op
+ok 6 - sequence digest fence and higher unchanged no-op
+  ---
+  duration_ms: 0.549666
+  type: 'test'
+  ...
+# Subtest: ACL shrink denies all current and history; regrant does not expose never-authorized history
+ok 7 - ACL shrink denies all current and history; regrant does not expose never-authorized history
+  ---
+  duration_ms: 0.391208
+  type: 'test'
+  ...
+# Subtest: unavailable replacement document and dataset deletion revoke old citation/history
+ok 8 - unavailable replacement document and dataset deletion revoke old citation/history
+  ---
+  duration_ms: 0.618125
+  type: 'test'
+  ...
+# Subtest: partial denied malformed duplicates mismatched parents rejected atomically
+ok 9 - partial denied malformed duplicates mismatched parents rejected atomically
+  ---
+  duration_ms: 1.91675
+  type: 'test'
+  ...
+# Subtest: input and output defensive clones; operator not implicitly reader
+ok 10 - input and output defensive clones; operator not implicitly reader
+  ---
+  duration_ms: 0.171542
+  type: 'test'
+  ...
+# Subtest: tuple distinguishes instance tenant project dataset
+ok 11 - tuple distinguishes instance tenant project dataset
+  ---
+  duration_ms: 0.59975
+  type: 'test'
+  ...
+# Subtest: adding and deleting another document does not re-version unchanged source
+ok 12 - adding and deleting another document does not re-version unchanged source
+  ---
+  duration_ms: 0.394458
+  type: 'test'
+  ...
+# Subtest: valid GitHub full revision retained; positions never converted into lines
+ok 13 - valid GitHub full revision retained; positions never converted into lines
+  ---
+  duration_ms: 0.217
+  type: 'test'
+  ...
+# Subtest: omitted read revision only current; explicit revision history, retirement interval and monotonic observation
+ok 14 - omitted read revision only current; explicit revision history, retirement interval and monotonic observation
+  ---
+  duration_ms: 0.38375
+  type: 'test'
+  ...
+# Subtest: rejects invalid calendar, raw URI, principals, hashes, and position tuples atomically
+ok 15 - rejects invalid calendar, raw URI, principals, hashes, and position tuples atomically
+  ---
+  duration_ms: 1.448875
+  type: 'test'
+  ...
+# Subtest: rejects non-string sidecar identity and author configuration
+ok 16 - rejects non-string sidecar identity and author configuration
+  ---
+  duration_ms: 0.095
+  type: 'test'
+  ...
+1..16
+# tests 16
+# suites 0
+# pass 16
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 200.784375
+exit=0
