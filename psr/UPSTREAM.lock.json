@@ -1,0 +1,34 @@
+{
+  "schema": "psr.ragflow.upstream.lock/v1",
+  "created_at": "2026-11-05T17:29:50+0800",
+  "timezone_note": "Asia/Singapore (UTC+8)",
+  "linear": "BRE-199",
+  "controlled_repo": {
+    "url": "https://github.com/brentlee-personal/ragflow-psr",
+    "visibility": "private",
+    "creation_method": "gh repo create --private + selective mirror push from infiniflow/ragflow (not GitHub fork-network)",
+    "related_disabled_fork": {
+      "url": "https://github.com/brentlee-personal/ragflow",
+      "method": "gh repo fork infiniflow/ragflow",
+      "limitation": "Converting the public fork to private left the repo Git-disabled (clone/push 403). Visibility revert still in progress (HTTP 422). Reviewer can see API main=cf4d0cc; local git access blocked. Controllable private mirror is ragflow-psr."
+    }
+  },
+  "upstream": {
+    "remote_name": "upstream",
+    "url": "https://github.com/infiniflow/ragflow.git",
+    "default_branch": "main"
+  },
+  "pin": {
+    "tag": "v0.27.3",
+    "commit": "8090ffd8ba6098813d7f7ec2c4b8774f36c8423a",
+    "rationale": "Latest non-RC stable release as of 2026-11-05; prefer over v1.0.0-rc3 (Latest but RC). Fork default main tip cf4d0cc450cf3f1fc15b3810774707706155a84f is tracked separately as mirror main, not the PSR baseline pin."
+  },
+  "baseline_branch": "psr/baseline-v0.27.3",
+  "observed_upstream_main_at_lock": "879439e6f2eecda0f291a6fcbfcd3868b8707098",
+  "sync_commands": [
+    "git fetch upstream --tags",
+    "psr/scripts/sync-check.sh",
+    "git checkout psr/baseline-v0.27.3",
+    "git merge --no-commit --no-ff upstream/main  # only after sync-check and human approve; prefer rebase onto new pin tag when bumping"
+  ]
+}

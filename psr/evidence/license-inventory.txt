@@ -1,0 +1,15 @@
+# License / NOTICE inventory @ v0.27.3 (8090ffd8ba6098813d7f7ec2c4b8774f36c8423a)
+scanned_at: 2026-11-05T17:29:50+0800 Asia/Singapore
+
+## Root LICENSE
+-rw-r--r--@ 2 libin  staff  11357 Nov  5 17:29 LICENSE
+                                 Apache License
+                           Version 2.0, January 2004
+
+## NOTICE at pin
+ABSENT at repository root (confirmed)
+
+## Paths matching license|notice|third.party (name only)
+LICENSE
+full_license_named_paths:
+LICENSE

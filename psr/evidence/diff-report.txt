@@ -1,0 +1,87 @@
+# Diff / divergence report (BRE-199)
+time: 2026-11-05T17:30:12+0800 Asia/Singapore
+
+## Pin vs upstream tag (should be identical)
+pin: v0.27.3 = 8090ffd8ba6098813d7f7ec2c4b8774f36c8423a
+local_tag_commit: 8090ffd8ba6098813d7f7ec2c4b8774f36c8423a
+RESULT: IDENTICAL (pin commit == tag commit)
+
+## Controllable mirror main vs upstream main (at lock time)
+origin/main (ragflow-psr): cf4d0cc450cf3f1fc15b3810774707706155a84f
+upstream/main: 879439e6f2eecda0f291a6fcbfcd3868b8707098
+
+## Stat: pin v0.27.3 → upstream/main
+warning: exhaustive rename detection was skipped due to too many files.
+warning: you may want to set your diff.renameLimit variable to at least 3713 and retry the command.
+ web/src/services/knowledge-service.ts              |    46 +-
+ web/src/services/mcp-server-service.ts             |    10 +-
+ web/src/services/next-chat-service.ts              |     7 +-
+ web/src/services/user-service.ts                   |     4 -
+ web/src/utils/__tests__/chat.test.ts               |    71 +
+ web/src/utils/__tests__/citation-utils.test.ts     |   137 +
+ web/src/utils/__tests__/form.test.ts               |    93 +
+ web/src/utils/__tests__/pipeline-operator.test.ts  |   237 +-
+ web/src/utils/api.ts                               |    42 +-
+ web/src/utils/authorization-util.ts                |    85 +-
+ web/src/utils/backend-runtime.ts                   |    56 -
+ web/src/utils/backend-variant.tsx                  |    71 -
+ web/src/utils/chat.ts                              |    48 +-
+ web/src/utils/citation-utils.ts                    |    73 +-
+ web/src/utils/date.ts                              |    47 +-
+ web/src/utils/document-util.ts                     |     5 +-
+ web/src/utils/file-util.ts                         |     5 +-
+ web/src/utils/form.ts                              |    35 +-
+ web/src/utils/llm-util.ts                          |     5 +
+ web/src/utils/next-request.ts                      |    15 +-
+ web/src/utils/pipeline-operator.ts                 |   177 +-
+ web/src/utils/request.ts                           |    46 +-
+ web/src/utils/source-locate.ts                     |    24 +-
+ web/src/utils/wiki-link-util.test.ts               |    36 +
+ web/src/utils/wiki-link-util.ts                    |    17 +
+ web/src/wrappers/auth.tsx                          |    16 +-
+ web/tailwind.config.js                             |     1 +
+ web/tailwind.css                                   |    12 +
+ web/vite.config.ts                                 |   107 +-
+ 6021 files changed, 1177243 insertions(+), 530508 deletions(-)
+
+## Shortlog pin..upstream/main (first 40)
+879439e6f2 Fix: The agent operator name is too long, causing the icon to be compressed. (#22042)
+34839b7145 fix(parser): keep the paragraphs of a Markdown blockquote apart (#21347)
+cf4d0cc450 fix(channels): propagate delivery errors without exposing credentials (#22033)
+37ac873b1d Fix: The model category filter does not change based on the system language, and there is no clear visual indicator to show which item is currently selected. (#22038)
+afd9a7f1da fix(parser): preserve Office table cell spans (#22012)
+6ece20514f fix(core): enforce consistent name and alias length limits (#22020)
+368d046502 fix(web): pass through 413/504 responses without a duplicate error toast (#22024)
+31e436c89d fix(knowledge-compiler): honor node settings and degrade missing vector mapping (#22026)
+79376b99f9 Add Somark VerifyOCRConnection (#21927)
+106c7d5cbf refactor(ingestion): consolidate duplicated meta-reader helpers into kccommon (#21983)
+aed68a2697 fix(ingestion): preserve PDF sentences across page boundaries (#21982)
+5482c2e299 fix(es): return error on item-level failures in metadata bulk write (#21956)
+b9d814f24c refa: remove remaining identity arguments (#22005)
+a72dd5fc2b Upgrade office_oxide to v0.1.16 and drop temporary caption/table fixes (#21978)
+db74a2dc63 Fix: second sort key for memory messages (#22004)
+0d788c2078 Fix: Increase the right-hand margin on the agent share page. (#22016)
+6b5fad434f fix(web): hide Agent-related content in chat channel connect dialog (#22015)
+51de23d026 Fix: If the title of an agent operator is too long, it overflows beyond the boundaries of the sheet. (#22013)
+8622f62d77 Fix: Dataset file configuration: switching from "pipeline" to "built-in" also triggers an exclamation mark warning. (#22010)
+31f26a2b0c fix: align version catalog test with EE permissions (#22011)
+6fd888fc0b fix(nlp): add retrieval prune logic and tests (#21627)
+c841a1c897 docs: Documentation Updates and UI Alignment (#21986)
+f1a132b89d refactor(structure): read STRUCT_MAX_CHUNKS_PER_BATCH via common.GetEnvInt (#21984)
+16c81d3017 fix(chunker): bound the crop page cache by bytes and release pages when a crop task panics (#21880)
+334c6cf99a fix(go): paginate the Anthropic models list (#21899)
+4bf54dbc26 fix(storage): add Content-MD5 to S3 batch delete requests (#21877)
+e8037522e1 fix(sdk): guard Session._structure_answer against KeyError on non-streaming agent responses (#21933)
+7a3f8c262e Fix: Deleting a pipeline bound to a dataset should not trigger an error when navigating to the file list page of a different dataset. (#21985)
+6df56e3640 Fix: agent session by default should not return dsl (#21989)
+8cab68a9a3 deepdoc/pdf: extend TableBuilder with FinalizeGrid and AttachSpanInfo (#21980)
+b2cf72d714 fix(deepdoc): keep DLA-labeled body prose out of table captions (#21979)
+b494fec232 fix(agentic_rag): make the decisionhead package compile without cgo (#21932)
+5b54cb0dad feat(ingestion): record pipeline version on operation logs (#21916)
+83f99c5140 i18n: translate GPUStack provider setup and parse cancel strings in tr-TR (#21963)
+318b9281eb feat(observability): carry user_name/tenant_name through IngestionLog (#21968)
+a0ca436d0f Fix: The messages in the embedded chat interface are positioned too close to the right edge. (#21974)
+bac72b835d ci: web not run go test (#21958)
+d6a22acfaf Fix: allow to move to root directory (#21969)
+8b8ccbf478 refactor(ingestion): consolidate unique* string dedup helpers into common (#21961)
+1958eb8f4a refactor(deepdoc): drop dead covered-slice+sort in GroupCells span injection (#21954)
