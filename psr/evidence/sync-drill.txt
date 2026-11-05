@@ -1939,3 +1939,4 @@ changed in both
 -        merged_config = deep_merge(merged_config, parser_config)
 sync-check_exit=141
 ahead_behind_pin_upstream_main=106	1121
+fixed_sync_check_exit=2
