@@ -2,7 +2,14 @@
 
 **Engineering default only — not a legal opinion / not “fully green”.**
 
-Pin: RAGFlow **v0.27.3** / `8090ffd8ba6098813d7f7ec2c4b8774f36c8423a`.
+Pin (dual-record, BRE-206 follow-up):
+
+| Field | Tag | Commit |
+| --- | --- | --- |
+| upstream_tag (immutable) | **v0.27.3** | `8090ffd8ba6098813d7f7ec2c4b8774f36c8423a` |
+| center_pin | **psr-v0.27.3-c1** | `934fa790b55dd95deed296d22c15c5895c60cf40` |
+
+See `CENTER-PIN.md`, `CENTER.lock.json`, `STACK.lock.json`.
 
 ## Approved defaults
 

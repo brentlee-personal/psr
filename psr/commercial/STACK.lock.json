@@ -1,8 +1,21 @@
 {
+  "schema": "psr.commercial.stack.lock/v2-dual-pin",
   "bre": "BRE-206",
-  "pin": {
-    "ragflow_tag": "v0.27.3",
-    "ragflow_commit": "8090ffd8ba6098813d7f7ec2c4b8774f36c8423a"
+  "cross_linear": ["BRE-205", "BRE-199", "BRE-200"],
+  "updated_at": "2026-11-05T18:20:00+08:00",
+  "timezone_note": "Asia/Singapore (UTC+8)",
+  "upstream_tag": {
+    "tag": "v0.27.3",
+    "commit": "8090ffd8ba6098813d7f7ec2c4b8774f36c8423a",
+    "role": "immutable soil / upstream pin; do not move/retag/delete",
+    "url_hint": "https://github.com/infiniflow/ragflow/releases/tag/v0.27.3"
+  },
+  "center_pin": {
+    "tag": "psr-v0.27.3-c1",
+    "commit": "934fa790b55dd95deed296d22c15c5895c60cf40",
+    "role": "PSR center commercial engineering defaults slice (Infinity/SeaweedFS/PostgreSQL + NOTICE)",
+    "baseline_branch": "psr/baseline-v0.27.3",
+    "annotated": true
   },
   "approved_engineering_defaults": {
     "DOC_ENGINE": "infinity",
@@ -18,6 +31,5 @@
     "pgsty/silo",
     "mysql"
   ],
-  "disclaimer": "approved engineering default (BRE-206); not a legal full-green claim",
-  "updated_at": "2026-11-05T18:15:00+08:00"
+  "disclaimer": "approved engineering default (BRE-206); not a legal full-green claim"
 }
