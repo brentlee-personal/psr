@@ -2,7 +2,14 @@
 
 Linear scope is [BRE-201](https://linear.app/brentlee/issue/BRE-201), mirrored by [BAS #121](https://github.com/brentlee-personal/background-agent-system/issues/121). Center base is `63ec3bc56d463bc5053c357b743ceedffee485ca` on `psr/baseline-v0.27.3`. BAS source base is `da29e3a9d1e62d2dba016021e9ba2e4a66d51c2c`.
 
-PR URLs and published head receipts will be added after both PRs exist. This file records a fixture coding delivery. It does not record merge approval, Linear Done, verified admission, or production service acceptance.
+| Repository | PR | PR-creation head SHA |
+| --- | --- | --- |
+| Center | [psr #5](https://github.com/brentlee-personal/psr/pull/5) | `5c5da18f98a03bbf1ab074fb00141b2f9b075804` |
+| BAS | [background-agent-system #135](https://github.com/brentlee-personal/background-agent-system/pull/135) | `1f3bff5358a5db83962772069a39c97126223cf8` |
+
+These are the published code/evidence and handoff heads at PR creation. The following commit only records delivery links and guard observations. A commit cannot embed its own hash; resolve the latest PR head with `gh pr view 5 --repo brentlee-personal/psr --json headRefOid` and `gh pr view 135 --repo brentlee-personal/background-agent-system --json headRefOid`. Final stdout reports those latest heads. Both PRs are open, non-draft, unmerged, with no auto-merge request.
+
+This file records a fixture coding delivery. It does not record merge approval, Linear Done, verified admission, or production service acceptance.
 
 Before publication, the remote center target advanced to `6dc829aaae6ceabd860d8a040ec67a047f36bbdc` with NOTICE, reproduction, and lock metadata changes. Remote BAS main advanced to `97fc1f298c01c6c7a9ef3f4903043bbd767cb9cf` with BRE-205 lock metadata changes. The remote comparisons show no overlap with this adapter or handoff. This delivery retains its source-assessment base and targets the requested branch names. It does not alter the other workstream's files or pins.
 
