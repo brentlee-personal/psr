@@ -21,7 +21,8 @@
   "pin": {
     "tag": "v0.27.3",
     "commit": "8090ffd8ba6098813d7f7ec2c4b8774f36c8423a",
-    "rationale": "Latest non-RC stable release as of 2026-11-05; prefer over v1.0.0-rc3 (Latest but RC). Fork default main tip cf4d0cc450cf3f1fc15b3810774707706155a84f is tracked separately as mirror main, not the PSR baseline pin."
+    "rationale": "0.27.x stable = v0.27.3 @ 8090ffd8… (not 1.0.0-rc*). First baseline prefers reproducible stability; BRE-202: RC upgrades irreversible, sandbox removal, API deprecation risk S9/S14. Go syncer not adopted (deferred; #21575 gap). MS ARM64 images from rc2 noted for BRE-200 only. See PIN-SELECTION.md.",
+    "selection_doc": "psr/PIN-SELECTION.md"
   },
   "baseline_branch": "psr/baseline-v0.27.3",
   "observed_upstream_main_at_lock": "879439e6f2eecda0f291a6fcbfcd3868b8707098",
@@ -30,5 +31,11 @@
     "psr/scripts/sync-check.sh",
     "git checkout psr/baseline-v0.27.3",
     "git merge --no-commit --no-ff upstream/main  # only after sync-check and human approve; prefer rebase onto new pin tag when bumping"
-  ]
+  ],
+  "decisions": {
+    "baseline_line": "0.27.x",
+    "reject_rc": true,
+    "go_syncer": "not_adopted_deferred",
+    "ms_arm64_runtime": "deferred_to_BRE-200"
+  }
 }

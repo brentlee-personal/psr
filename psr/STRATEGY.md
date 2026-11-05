@@ -24,3 +24,7 @@
 ## Out of scope for BRE-199
 
 ARM64/Colima full stack bring-up is **BRE-200**. This card only locks source baseline + sync strategy.
+
+## Pin selection
+
+See **`PIN-SELECTION.md`** for the explicit v0.27.3 vs 1.0.0-rc* decision, Go syncer deferral, and ARM64→BRE-200 note.
