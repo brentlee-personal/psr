@@ -12,8 +12,8 @@ See `psr/UPSTREAM.lock.json`:
 ## From the private mirror
 
 ```bash
-git clone https://github.com/brentlee-personal/ragflow-psr.git
-cd ragflow-psr
+git clone https://github.com/brentlee-personal/psr.git
+cd psr
 git fetch origin tag v0.27.3
 git checkout -B psr/baseline-v0.27.3 v0.27.3
 test "$(git rev-parse HEAD)" = "8090ffd8ba6098813d7f7ec2c4b8774f36c8423a"
@@ -34,7 +34,7 @@ test "$(git rev-parse HEAD)" = "8090ffd8ba6098813d7f7ec2c4b8774f36c8423a"
 ```bash
 git remote add upstream https://github.com/infiniflow/ragflow.git   # if missing
 git remote -v
-# origin   → brentlee-personal/ragflow-psr
+# origin   → brentlee-personal/psr
 # upstream → infiniflow/ragflow
 ```
 

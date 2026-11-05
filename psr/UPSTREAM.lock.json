@@ -4,14 +4,17 @@
   "timezone_note": "Asia/Singapore (UTC+8)",
   "linear": "BRE-199",
   "controlled_repo": {
-    "url": "https://github.com/brentlee-personal/ragflow-psr",
+    "url": "https://github.com/brentlee-personal/psr",
     "visibility": "private",
     "creation_method": "gh repo create --private + selective mirror push from infiniflow/ragflow (not GitHub fork-network)",
     "related_disabled_fork": {
       "url": "https://github.com/brentlee-personal/ragflow",
       "method": "gh repo fork infiniflow/ragflow",
-      "limitation": "Converting the public fork to private left the repo Git-disabled (clone/push 403). Visibility revert still in progress (HTTP 422). Reviewer can see API main=cf4d0cc; local git access blocked. Controllable private mirror is ragflow-psr."
-    }
+      "limitation": "Converting the public fork to private left the repo Git-disabled (clone/push 403). Visibility revert still in progress (HTTP 422). Reviewer can see API main=cf4d0cc; local git access blocked. Controllable private mirror is brentlee-personal/psr (renamed from ragflow-psr; old URL redirects)."
+    },
+    "former_names": [
+      "ragflow-psr"
+    ]
   },
   "upstream": {
     "remote_name": "upstream",
