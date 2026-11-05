@@ -1,0 +1,77 @@
+{
+  "scope": {
+    "instanceId": "fixture-local",
+    "tenantId": "demo",
+    "projectId": "urn:semantic:demo:ragflow:project:00000000-0000-0000-0000-000000000002"
+  },
+  "acquisition": {
+    "sequence": 1,
+    "observedTime": "2026-11-05T00:00:00Z",
+    "complete": true,
+    "authorized": true
+  },
+  "datasets": {
+    "code": 0,
+    "total": 1,
+    "data": [
+      {
+        "id": "dataset-1",
+        "name": "Synthetic privacy route"
+      }
+    ]
+  },
+  "documents": [
+    {
+      "datasetId": "dataset-1",
+      "response": {
+        "code": 0,
+        "data": {
+          "total": 1,
+          "docs": [
+            {
+              "id": "privacy",
+              "name": "Privacy route"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "chunks": [
+    {
+      "datasetId": "dataset-1",
+      "documentId": "privacy",
+      "response": {
+        "code": 0,
+        "data": {
+          "total": 1,
+          "chunks": [
+            {
+              "id": "route",
+              "dataset_id": "dataset-1",
+              "document_id": "privacy",
+              "content": "/privacy-policy canonical",
+              "available": true,
+              "positions": [[1, 0, 10, 0, 10]]
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "sidecar": {
+    "documents": [
+      {
+        "datasetId": "dataset-1",
+        "documentId": "privacy",
+        "readers": ["urn:principal:demo:group:team", "urn:principal:demo:human:restricted"],
+        "source": {
+          "system": "document",
+          "uri": "https://fixture.invalid/privacy-policy",
+          "revision": "fixture-before",
+          "locator": "synthetic-text"
+        }
+      }
+    ]
+  }
+}

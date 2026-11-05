@@ -1,0 +1,499 @@
+{
+  "scenario": "Synthetic privacy route rename with stable native IDs, then ACL shrink and deletion",
+  "proof_boundary": "Fixture responses only. This does not replay an actual ThingWeave deployment or RAGFlow server.",
+  "source_id": "urn:semantic:demo:ragflow:knowledge-object:87e68118-c0f2-0014-e7cf-df404f7c61de",
+  "native_ids": {
+    "datasetId": "dataset-1",
+    "documentId": "privacy",
+    "chunkId": "route"
+  },
+  "old_citation": {
+    "recordId": "urn:semantic:demo:ragflow:evidence:3ef8aa32-17ab-ee5f-9115-053ee9015dc6",
+    "revision": 1,
+    "mode": "current"
+  },
+  "new_citation": {
+    "recordId": "urn:semantic:demo:ragflow:evidence:4f93db0a-e364-dc9e-124b-fbf4f99a19cc",
+    "revision": 1,
+    "mode": "current"
+  },
+  "old_current_citation_invalid": true,
+  "old_current_read_denied": true,
+  "authorized_history_generations_after_rename": 2,
+  "removed_reader_current_denied": true,
+  "removed_reader_history_denied": true,
+  "removed_reader_changesets_denied": true,
+  "deleted_source_current_denied": true,
+  "deleted_source_ordinary_history_denied": true,
+  "receipts": {
+    "initial": {
+      "sequence": 1,
+      "digest": "032fd2848d29da1e63017ed9c73cbee9be0720f1f7f74d3bf2c4dbf5a3ab199a",
+      "changed": true,
+      "proposed": 3,
+      "deprecated": 0
+    },
+    "update": {
+      "sequence": 2,
+      "digest": "42a0286dfbeebb295358eb59b7af96b9e15ec3a0dea0394ee16560b2adfd18ff",
+      "changed": true,
+      "proposed": 3,
+      "deprecated": 3
+    },
+    "acl": {
+      "sequence": 3,
+      "digest": "9184992e37240415120cecff618ec0dec958e824222f06bf86baf28488ffd82a",
+      "changed": true,
+      "proposed": 3,
+      "deprecated": 3
+    },
+    "deletion": {
+      "sequence": 4,
+      "digest": "465295c3bfbf4031f7df3b6b12123bd85c62046a1eee8985027d4403deb7f35c",
+      "changed": true,
+      "proposed": 0,
+      "deprecated": 3
+    }
+  },
+  "authorized_proposals_before_revocation": [
+    {
+      "id": "urn:semantic:demo:ragflow:change-set:3ef8aa32-17ab-ee5f-9115-053ee9015dc6",
+      "kind": "change_set",
+      "tenant_id": "demo",
+      "namespace_id": "urn:semantic:demo:ragflow:namespace:00000000-0000-0000-0000-000000000001",
+      "project_id": "urn:semantic:demo:ragflow:project:00000000-0000-0000-0000-000000000002",
+      "revision": 1,
+      "status": "proposed",
+      "valid_time": {
+        "start": "2026-11-05T00:00:00Z",
+        "end": null
+      },
+      "observed_time": "2026-11-05T00:00:00Z",
+      "permissions": {
+        "readers": [
+          "urn:principal:demo:group:team",
+          "urn:principal:demo:human:restricted"
+        ],
+        "proposers": [
+          "urn:principal:demo:agent:sidecar"
+        ],
+        "verifiers": [],
+        "deprecators": [
+          "urn:principal:demo:agent:sidecar"
+        ]
+      },
+      "author": "urn:principal:demo:agent:sidecar",
+      "idempotency_key": "032fd2848d29da1e63017ed9c73cbee9be0720f1f7f74d3bf2c4dbf5a3ab199a:urn:semantic:demo:ragflow:knowledge-object:87e68118-c0f2-0014-e7cf-df404f7c61de",
+      "operations": [
+        {
+          "op": "propose",
+          "record": {
+            "id": "urn:semantic:demo:ragflow:knowledge-object:3ef8aa32-17ab-ee5f-9115-053ee9015dc6",
+            "kind": "knowledge_object",
+            "tenant_id": "demo",
+            "namespace_id": "urn:semantic:demo:ragflow:namespace:00000000-0000-0000-0000-000000000001",
+            "project_id": "urn:semantic:demo:ragflow:project:00000000-0000-0000-0000-000000000002",
+            "revision": 1,
+            "status": "proposed",
+            "valid_time": {
+              "start": "2026-11-05T00:00:00Z",
+              "end": null
+            },
+            "observed_time": "2026-11-05T00:00:00Z",
+            "permissions": {
+              "readers": [
+                "urn:principal:demo:group:team",
+                "urn:principal:demo:human:restricted"
+              ],
+              "proposers": [
+                "urn:principal:demo:agent:sidecar"
+              ],
+              "verifiers": [],
+              "deprecators": [
+                "urn:principal:demo:agent:sidecar"
+              ]
+            },
+            "object_type": "ragflow_chunk",
+            "title": "Privacy route",
+            "assertion_ids": [
+              "urn:semantic:demo:ragflow:assertion:3ef8aa32-17ab-ee5f-9115-053ee9015dc6"
+            ],
+            "relation_ids": []
+          }
+        },
+        {
+          "op": "propose",
+          "record": {
+            "id": "urn:semantic:demo:ragflow:assertion:3ef8aa32-17ab-ee5f-9115-053ee9015dc6",
+            "kind": "assertion",
+            "tenant_id": "demo",
+            "namespace_id": "urn:semantic:demo:ragflow:namespace:00000000-0000-0000-0000-000000000001",
+            "project_id": "urn:semantic:demo:ragflow:project:00000000-0000-0000-0000-000000000002",
+            "revision": 1,
+            "status": "proposed",
+            "valid_time": {
+              "start": "2026-11-05T00:00:00Z",
+              "end": null
+            },
+            "observed_time": "2026-11-05T00:00:00Z",
+            "permissions": {
+              "readers": [
+                "urn:principal:demo:group:team",
+                "urn:principal:demo:human:restricted"
+              ],
+              "proposers": [
+                "urn:principal:demo:agent:sidecar"
+              ],
+              "verifiers": [],
+              "deprecators": [
+                "urn:principal:demo:agent:sidecar"
+              ]
+            },
+            "subject_id": "urn:semantic:demo:ragflow:knowledge-object:3ef8aa32-17ab-ee5f-9115-053ee9015dc6",
+            "predicate": "source_excerpt",
+            "value": {
+              "type": "literal",
+              "value": "/privacy-policy canonical"
+            },
+            "confidence": 0,
+            "source_anchors": [
+              {
+                "system": "document",
+                "uri": "https://fixture.invalid/privacy-policy",
+                "revision": "fixture-before",
+                "locator": "synthetic-text;chunk=route;positions=[[1,0,10,0,10]]"
+              }
+            ],
+            "evidence_ids": [
+              "urn:semantic:demo:ragflow:evidence:3ef8aa32-17ab-ee5f-9115-053ee9015dc6"
+            ]
+          }
+        },
+        {
+          "op": "propose",
+          "record": {
+            "id": "urn:semantic:demo:ragflow:evidence:3ef8aa32-17ab-ee5f-9115-053ee9015dc6",
+            "kind": "evidence",
+            "tenant_id": "demo",
+            "namespace_id": "urn:semantic:demo:ragflow:namespace:00000000-0000-0000-0000-000000000001",
+            "project_id": "urn:semantic:demo:ragflow:project:00000000-0000-0000-0000-000000000002",
+            "revision": 1,
+            "status": "proposed",
+            "valid_time": {
+              "start": "2026-11-05T00:00:00Z",
+              "end": null
+            },
+            "observed_time": "2026-11-05T00:00:00Z",
+            "permissions": {
+              "readers": [
+                "urn:principal:demo:group:team",
+                "urn:principal:demo:human:restricted"
+              ],
+              "proposers": [
+                "urn:principal:demo:agent:sidecar"
+              ],
+              "verifiers": [],
+              "deprecators": [
+                "urn:principal:demo:agent:sidecar"
+              ]
+            },
+            "source_anchor": {
+              "system": "document",
+              "uri": "https://fixture.invalid/privacy-policy",
+              "revision": "fixture-before",
+              "locator": "synthetic-text;chunk=route;positions=[[1,0,10,0,10]]"
+            },
+            "content_sha256": "02b82cda106b4da93c091447757a95496869987c19214e83093a0f41213849f8"
+          }
+        }
+      ]
+    },
+    {
+      "id": "urn:semantic:demo:ragflow:change-set:4f93db0a-e364-dc9e-124b-fbf4f99a19cc",
+      "kind": "change_set",
+      "tenant_id": "demo",
+      "namespace_id": "urn:semantic:demo:ragflow:namespace:00000000-0000-0000-0000-000000000001",
+      "project_id": "urn:semantic:demo:ragflow:project:00000000-0000-0000-0000-000000000002",
+      "revision": 1,
+      "status": "proposed",
+      "valid_time": {
+        "start": "2026-11-05T00:01:00Z",
+        "end": null
+      },
+      "observed_time": "2026-11-05T00:01:00Z",
+      "permissions": {
+        "readers": [
+          "urn:principal:demo:group:team",
+          "urn:principal:demo:human:restricted"
+        ],
+        "proposers": [
+          "urn:principal:demo:agent:sidecar"
+        ],
+        "verifiers": [],
+        "deprecators": [
+          "urn:principal:demo:agent:sidecar"
+        ]
+      },
+      "author": "urn:principal:demo:agent:sidecar",
+      "idempotency_key": "42a0286dfbeebb295358eb59b7af96b9e15ec3a0dea0394ee16560b2adfd18ff:urn:semantic:demo:ragflow:knowledge-object:87e68118-c0f2-0014-e7cf-df404f7c61de",
+      "operations": [
+        {
+          "op": "transition",
+          "target_id": "urn:semantic:demo:ragflow:knowledge-object:3ef8aa32-17ab-ee5f-9115-053ee9015dc6",
+          "expected_revision": 1,
+          "from_status": "proposed",
+          "to_status": "deprecated",
+          "record": {
+            "id": "urn:semantic:demo:ragflow:knowledge-object:3ef8aa32-17ab-ee5f-9115-053ee9015dc6",
+            "kind": "knowledge_object",
+            "tenant_id": "demo",
+            "namespace_id": "urn:semantic:demo:ragflow:namespace:00000000-0000-0000-0000-000000000001",
+            "project_id": "urn:semantic:demo:ragflow:project:00000000-0000-0000-0000-000000000002",
+            "revision": 2,
+            "status": "deprecated",
+            "valid_time": {
+              "start": "2026-11-05T00:00:00Z",
+              "end": "2026-11-05T00:01:00Z"
+            },
+            "observed_time": "2026-11-05T00:01:00Z",
+            "permissions": {
+              "readers": [
+                "urn:principal:demo:group:team",
+                "urn:principal:demo:human:restricted"
+              ],
+              "proposers": [
+                "urn:principal:demo:agent:sidecar"
+              ],
+              "verifiers": [],
+              "deprecators": [
+                "urn:principal:demo:agent:sidecar"
+              ]
+            },
+            "object_type": "ragflow_chunk",
+            "title": "Privacy route",
+            "assertion_ids": [
+              "urn:semantic:demo:ragflow:assertion:3ef8aa32-17ab-ee5f-9115-053ee9015dc6"
+            ],
+            "relation_ids": []
+          }
+        },
+        {
+          "op": "transition",
+          "target_id": "urn:semantic:demo:ragflow:assertion:3ef8aa32-17ab-ee5f-9115-053ee9015dc6",
+          "expected_revision": 1,
+          "from_status": "proposed",
+          "to_status": "deprecated",
+          "record": {
+            "id": "urn:semantic:demo:ragflow:assertion:3ef8aa32-17ab-ee5f-9115-053ee9015dc6",
+            "kind": "assertion",
+            "tenant_id": "demo",
+            "namespace_id": "urn:semantic:demo:ragflow:namespace:00000000-0000-0000-0000-000000000001",
+            "project_id": "urn:semantic:demo:ragflow:project:00000000-0000-0000-0000-000000000002",
+            "revision": 2,
+            "status": "deprecated",
+            "valid_time": {
+              "start": "2026-11-05T00:00:00Z",
+              "end": "2026-11-05T00:01:00Z"
+            },
+            "observed_time": "2026-11-05T00:01:00Z",
+            "permissions": {
+              "readers": [
+                "urn:principal:demo:group:team",
+                "urn:principal:demo:human:restricted"
+              ],
+              "proposers": [
+                "urn:principal:demo:agent:sidecar"
+              ],
+              "verifiers": [],
+              "deprecators": [
+                "urn:principal:demo:agent:sidecar"
+              ]
+            },
+            "subject_id": "urn:semantic:demo:ragflow:knowledge-object:3ef8aa32-17ab-ee5f-9115-053ee9015dc6",
+            "predicate": "source_excerpt",
+            "value": {
+              "type": "literal",
+              "value": "/privacy-policy canonical"
+            },
+            "confidence": 0,
+            "source_anchors": [
+              {
+                "system": "document",
+                "uri": "https://fixture.invalid/privacy-policy",
+                "revision": "fixture-before",
+                "locator": "synthetic-text;chunk=route;positions=[[1,0,10,0,10]]"
+              }
+            ],
+            "evidence_ids": [
+              "urn:semantic:demo:ragflow:evidence:3ef8aa32-17ab-ee5f-9115-053ee9015dc6"
+            ]
+          }
+        },
+        {
+          "op": "transition",
+          "target_id": "urn:semantic:demo:ragflow:evidence:3ef8aa32-17ab-ee5f-9115-053ee9015dc6",
+          "expected_revision": 1,
+          "from_status": "proposed",
+          "to_status": "deprecated",
+          "record": {
+            "id": "urn:semantic:demo:ragflow:evidence:3ef8aa32-17ab-ee5f-9115-053ee9015dc6",
+            "kind": "evidence",
+            "tenant_id": "demo",
+            "namespace_id": "urn:semantic:demo:ragflow:namespace:00000000-0000-0000-0000-000000000001",
+            "project_id": "urn:semantic:demo:ragflow:project:00000000-0000-0000-0000-000000000002",
+            "revision": 2,
+            "status": "deprecated",
+            "valid_time": {
+              "start": "2026-11-05T00:00:00Z",
+              "end": "2026-11-05T00:01:00Z"
+            },
+            "observed_time": "2026-11-05T00:01:00Z",
+            "permissions": {
+              "readers": [
+                "urn:principal:demo:group:team",
+                "urn:principal:demo:human:restricted"
+              ],
+              "proposers": [
+                "urn:principal:demo:agent:sidecar"
+              ],
+              "verifiers": [],
+              "deprecators": [
+                "urn:principal:demo:agent:sidecar"
+              ]
+            },
+            "source_anchor": {
+              "system": "document",
+              "uri": "https://fixture.invalid/privacy-policy",
+              "revision": "fixture-before",
+              "locator": "synthetic-text;chunk=route;positions=[[1,0,10,0,10]]"
+            },
+            "content_sha256": "02b82cda106b4da93c091447757a95496869987c19214e83093a0f41213849f8"
+          }
+        },
+        {
+          "op": "propose",
+          "record": {
+            "id": "urn:semantic:demo:ragflow:knowledge-object:4f93db0a-e364-dc9e-124b-fbf4f99a19cc",
+            "kind": "knowledge_object",
+            "tenant_id": "demo",
+            "namespace_id": "urn:semantic:demo:ragflow:namespace:00000000-0000-0000-0000-000000000001",
+            "project_id": "urn:semantic:demo:ragflow:project:00000000-0000-0000-0000-000000000002",
+            "revision": 1,
+            "status": "proposed",
+            "valid_time": {
+              "start": "2026-11-05T00:01:00Z",
+              "end": null
+            },
+            "observed_time": "2026-11-05T00:01:00Z",
+            "permissions": {
+              "readers": [
+                "urn:principal:demo:group:team",
+                "urn:principal:demo:human:restricted"
+              ],
+              "proposers": [
+                "urn:principal:demo:agent:sidecar"
+              ],
+              "verifiers": [],
+              "deprecators": [
+                "urn:principal:demo:agent:sidecar"
+              ]
+            },
+            "object_type": "ragflow_chunk",
+            "title": "Privacy redirect",
+            "assertion_ids": [
+              "urn:semantic:demo:ragflow:assertion:4f93db0a-e364-dc9e-124b-fbf4f99a19cc"
+            ],
+            "relation_ids": []
+          }
+        },
+        {
+          "op": "propose",
+          "record": {
+            "id": "urn:semantic:demo:ragflow:assertion:4f93db0a-e364-dc9e-124b-fbf4f99a19cc",
+            "kind": "assertion",
+            "tenant_id": "demo",
+            "namespace_id": "urn:semantic:demo:ragflow:namespace:00000000-0000-0000-0000-000000000001",
+            "project_id": "urn:semantic:demo:ragflow:project:00000000-0000-0000-0000-000000000002",
+            "revision": 1,
+            "status": "proposed",
+            "valid_time": {
+              "start": "2026-11-05T00:01:00Z",
+              "end": null
+            },
+            "observed_time": "2026-11-05T00:01:00Z",
+            "permissions": {
+              "readers": [
+                "urn:principal:demo:group:team",
+                "urn:principal:demo:human:restricted"
+              ],
+              "proposers": [
+                "urn:principal:demo:agent:sidecar"
+              ],
+              "verifiers": [],
+              "deprecators": [
+                "urn:principal:demo:agent:sidecar"
+              ]
+            },
+            "subject_id": "urn:semantic:demo:ragflow:knowledge-object:4f93db0a-e364-dc9e-124b-fbf4f99a19cc",
+            "predicate": "source_excerpt",
+            "value": {
+              "type": "literal",
+              "value": "/privacy-policy redirects to /privacy 301"
+            },
+            "confidence": 0,
+            "source_anchors": [
+              {
+                "system": "document",
+                "uri": "https://fixture.invalid/privacy",
+                "revision": "fixture-after",
+                "locator": "synthetic-text;chunk=route;positions=[[1,0,10,0,10]]"
+              }
+            ],
+            "evidence_ids": [
+              "urn:semantic:demo:ragflow:evidence:4f93db0a-e364-dc9e-124b-fbf4f99a19cc"
+            ]
+          }
+        },
+        {
+          "op": "propose",
+          "record": {
+            "id": "urn:semantic:demo:ragflow:evidence:4f93db0a-e364-dc9e-124b-fbf4f99a19cc",
+            "kind": "evidence",
+            "tenant_id": "demo",
+            "namespace_id": "urn:semantic:demo:ragflow:namespace:00000000-0000-0000-0000-000000000001",
+            "project_id": "urn:semantic:demo:ragflow:project:00000000-0000-0000-0000-000000000002",
+            "revision": 1,
+            "status": "proposed",
+            "valid_time": {
+              "start": "2026-11-05T00:01:00Z",
+              "end": null
+            },
+            "observed_time": "2026-11-05T00:01:00Z",
+            "permissions": {
+              "readers": [
+                "urn:principal:demo:group:team",
+                "urn:principal:demo:human:restricted"
+              ],
+              "proposers": [
+                "urn:principal:demo:agent:sidecar"
+              ],
+              "verifiers": [],
+              "deprecators": [
+                "urn:principal:demo:agent:sidecar"
+              ]
+            },
+            "source_anchor": {
+              "system": "document",
+              "uri": "https://fixture.invalid/privacy",
+              "revision": "fixture-after",
+              "locator": "synthetic-text;chunk=route;positions=[[1,0,10,0,10]]"
+            },
+            "content_sha256": "1b27333cd1b94e4b14dc5e9f560d7b4619d54349a5245ca2f6d3700f99dc3cbe"
+          }
+        }
+      ]
+    }
+  ],
+  "verified_store_writes": 0,
+  "upstream_writes": 0
+}
