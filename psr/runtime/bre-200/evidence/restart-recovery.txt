@@ -1,0 +1,19 @@
+RESTART_BEGIN 2026-11-05 18:30:42 CST
+ragflow-psr-m05-ragflow-cpu-1
+t=1 login=000000
+t=2 login=000000
+t=3 login=000000
+t=4 login=502
+t=5 login=502
+t=6 login=502
+t=7 login=502
+t=8 login=502
+t=9 login=502
+t=10 login=502
+t=11 login=200
+{"code":0,"data":[{"avatar":null,"chunk_count":2,"chunk_method":"naive","create_date":"2026-11-05T18:30:06","create_time":1793874606989,"created_by":"ec5d21a0d8ff11f18c586f3b93d678d1","description":"BRE-200 ES smoke (ARM64 workaround; commercial default Infinity/OpenSearch)","document_count":2,"embedding_model":"BAAI/bge-small-en-v1.5@Builtin","embedding_model_name":"","graphrag_task_finish_at":nu
+RESTART_OK
+{"status":"ok","service":"psr-m0-api"}
+  PID     ELAPSED
+92856 03-01:34:28
+RESTART_END 2026-11-05 18:31:31 CST

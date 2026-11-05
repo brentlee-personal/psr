@@ -1,0 +1,7 @@
+NAMES                           STATUS                    PORTS
+ragflow-psr-m05-ragflow-cpu-1   Up 2 minutes              127.0.0.1:19680->80/tcp, 127.0.0.1:19681->443/tcp, 127.0.0.1:19682->9380/tcp, 127.0.0.1:19683->9381/tcp, 127.0.0.1:19684->9382/tcp
+ragflow-psr-m05-mysql-1         Up 2 minutes (healthy)    33060/tcp, 127.0.0.1:23306->3306/tcp
+ragflow-psr-m05-es01-1          Up 2 minutes (healthy)    9300/tcp, 127.0.0.1:19200->9200/tcp
+ragflow-psr-m05-tei-cpu-1       Up 21 minutes             127.0.0.1:16380->80/tcp
+ragflow-psr-m05-minio-1         Up 43 minutes (healthy)   127.0.0.1:29000->9000/tcp, 127.0.0.1:29001->9001/tcp
+ragflow-psr-m05-redis-1         Up 43 minutes (healthy)   127.0.0.1:26379->6379/tcp

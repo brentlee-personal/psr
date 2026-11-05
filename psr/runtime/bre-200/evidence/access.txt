@@ -1,0 +1,6 @@
+local_web http://127.0.0.1:19680/
+local_api http://127.0.0.1:19682/
+es http://127.0.0.1:19200/ (auth elastic)
+tei http://127.0.0.1:16380/health
+G0 http://127.0.0.1:8787/health and NetBird forward 100.106.243.95:8787/5432 (existing; NOT ragflow)
+ragflow binds 127.0.0.1 only — minimal privilege; no new public exposure

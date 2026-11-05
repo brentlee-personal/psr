@@ -1,0 +1,101 @@
+{
+  "code": 0,
+  "data": {
+    "docs": [
+      {
+        "chunk_count": 1,
+        "chunk_method": "naive",
+        "create_date": "2026-11-05T18:30:07",
+        "create_time": 1793874607019,
+        "created_by": "ec5d21a0d8ff11f18c586f3b93d678d1",
+        "dataset_id": "deb76214d90311f1aaf1f53e5c9c2fb5",
+        "id": "debae466d90311f1aaf1f53e5c9c2fb5",
+        "location": "sample.pdf",
+        "meta_fields": {},
+        "name": "sample.pdf",
+        "nickname": "bre200",
+        "parser_config": {
+          "auto_keywords": 0,
+          "auto_questions": 0,
+          "children_delimiter": "",
+          "chunk_token_num": 512,
+          "delimiter": "\n",
+          "html4excel": false,
+          "image_context_size": 0,
+          "layout_recognize": "DeepDOC",
+          "llm_id": "",
+          "parent_child": {
+            "children_delimiter": "\n",
+            "use_parent_child": false
+          },
+          "table_context_size": 0,
+          "topn_tags": 3
+        },
+        "pipeline_id": null,
+        "pipeline_name": null,
+        "process_begin_at": "2026-11-05T18:30:07",
+        "process_duration": 12.6217,
+        "progress": 1.0,
+        "progress_msg": "\n18:30:10 Task has been received.\n18:30:10 Page(1~1): Start to parse.\n18:30:11 Page(1~1): OCR started\n18:30:11 Page(1~1): OCR finished (0.29s)\n18:30:16 Page(1~1): Layout analysis (4.77s)\n18:30:16 Page(1~1): Table analysis (0.00s)\n18:30:16 Page(1~1): Text merged (0.05s)\n18:30:16 Page(1~1): Finish parsing.\n18:30:16 Page(1~1): Generate 1 chunks\n18:30:16 Page(1~1): Embedding chunks (0.03s)\n18:30:16 Page(1~1): Indexing done (0.20s).\n18:30:19 Page(1~1): Task done (8.67s)",
+        "run": "DONE",
+        "size": 607,
+        "source_type": "local",
+        "status": "1",
+        "suffix": "pdf",
+        "thumbnail": "/api/v1/documents/debae466d90311f1aaf1f53e5c9c2fb5/thumbnail",
+        "token_count": 21,
+        "type": "pdf",
+        "update_date": "2026-11-05T18:30:19",
+        "update_time": 1793874619621
+      },
+      {
+        "chunk_count": 1,
+        "chunk_method": "naive",
+        "create_date": "2026-11-05T18:30:07",
+        "create_time": 1793874607007,
+        "created_by": "ec5d21a0d8ff11f18c586f3b93d678d1",
+        "dataset_id": "deb76214d90311f1aaf1f53e5c9c2fb5",
+        "id": "deb955d8d90311f1aaf1f53e5c9c2fb5",
+        "location": "sample.md",
+        "meta_fields": {},
+        "name": "sample.md",
+        "nickname": "bre200",
+        "parser_config": {
+          "auto_keywords": 0,
+          "auto_questions": 0,
+          "children_delimiter": "",
+          "chunk_token_num": 512,
+          "delimiter": "\n",
+          "html4excel": false,
+          "image_context_size": 0,
+          "layout_recognize": "DeepDOC",
+          "llm_id": "",
+          "parent_child": {
+            "children_delimiter": "\n",
+            "use_parent_child": false
+          },
+          "table_context_size": 0,
+          "topn_tags": 3
+        },
+        "pipeline_id": null,
+        "pipeline_name": null,
+        "process_begin_at": "2026-11-05T18:30:07",
+        "process_duration": 12.6347,
+        "progress": 1.0,
+        "progress_msg": "\n18:30:11 Task has been received.\n18:30:16 Page(1~100000000): Start to parse.\n18:30:16 Page(1~100000000): Finish parsing.\n18:30:16 Page(1~100000000): Generate 1 chunks\n18:30:16 Page(1~100000000): Embedding chunks (0.18s)\n18:30:19 Page(1~100000000): Indexing done (2.96s).\n18:30:19 Page(1~100000000): Task done (3.44s)",
+        "run": "DONE",
+        "size": 242,
+        "source_type": "local",
+        "status": "1",
+        "suffix": "md",
+        "thumbnail": "",
+        "token_count": 66,
+        "type": "doc",
+        "update_date": "2026-11-05T18:30:19",
+        "update_time": 1793874619634
+      }
+    ],
+    "total": 2
+  },
+  "message": "success"
+}

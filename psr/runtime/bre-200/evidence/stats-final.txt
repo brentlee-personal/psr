@@ -1,0 +1,12 @@
+NAME                            CPU %     MEM USAGE / LIMIT
+ragflow-psr-m05-ragflow-cpu-1   1.32%     4.449GiB / 8GiB
+ragflow-psr-m05-mysql-1         0.80%     417.2MiB / 1.5GiB
+ragflow-psr-m05-es01-1          0.78%     1.151GiB / 1.5GiB
+ragflow-psr-m05-tei-cpu-1       0.68%     1.19GiB / 2GiB
+ragflow-psr-m05-minio-1         1.09%     83.76MiB / 512MiB
+ragflow-psr-m05-redis-1         1.31%     6.836MiB / 512MiB
+psr-m0-api-1                    0.02%     24.98MiB / 15.58GiB
+psr-m0-postgres-1               0.00%     20.45MiB / 15.58GiB
+multica-frontend-1              0.00%     53.95MiB / 15.58GiB
+multica-backend-1               0.09%     11.8MiB / 15.58GiB
+multica-postgres-1              0.18%     92.91MiB / 15.58GiB

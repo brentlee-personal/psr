@@ -1,0 +1,41 @@
+{
+  "code": 0,
+  "data": {
+    "chunks": [
+      {
+        "content": "# BRE-200 sample markdown\nPrivate Semantic Runtime (PSR) keeps project knowledge consistent.\nRAGFlow pin for M0.5 is v0.27.3 on Mac Studio Colima.\nInfinity runs under Rosetta on ARM64 hosts for this pin; Ragflow server is amd64 via Rosetta.",
+        "content_ltks": "bre 200 sampl markdown privat semant runtim psr keep project knowledg consist ragflow pin for m0 5 is v0 273 on mac studio colima infin run under rosetta on arm64 host for this pin ragflow server is amd64 via rosetta",
+        "dataset_id": "deb76214d90311f1aaf1f53e5c9c2fb5",
+        "doc_type_kwd": "",
+        "document_id": "deb955d8d90311f1aaf1f53e5c9c2fb5",
+        "document_keyword": "sample.md",
+        "id": "afc13af0b3a9d738",
+        "image_id": "",
+        "important_keywords": [],
+        "mom_id": "",
+        "positions": [
+          [
+            1,
+            0,
+            0,
+            0,
+            0
+          ]
+        ],
+        "row_id": null,
+        "similarity": 0.37429763122082754,
+        "tag_kwd": [],
+        "term_similarity": 0.13672014460118223,
+        "vector_similarity": 0.9286451
+      }
+    ],
+    "doc_aggs": [
+      {
+        "count": 1,
+        "doc_id": "deb955d8d90311f1aaf1f53e5c9c2fb5",
+        "doc_name": "sample.md"
+      }
+    ],
+    "total": 1
+  }
+}
