@@ -1,0 +1,14 @@
+{
+  "identities": [
+    {
+      "name": "rag_flow",
+      "credentials": [
+        {
+          "accessKey": "rag_flow",
+          "secretKey": "infini_rag_flow"
+        }
+      ],
+      "actions": ["Admin", "Read", "Write", "List", "Tagging"]
+    }
+  ]
+}

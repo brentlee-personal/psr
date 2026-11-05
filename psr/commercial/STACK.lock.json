@@ -1,0 +1,23 @@
+{
+  "bre": "BRE-206",
+  "pin": {
+    "ragflow_tag": "v0.27.3",
+    "ragflow_commit": "8090ffd8ba6098813d7f7ec2c4b8774f36c8423a"
+  },
+  "approved_engineering_defaults": {
+    "DOC_ENGINE": "infinity",
+    "DOC_ENGINE_alternate": "opensearch",
+    "OBJECT_STORE": "seaweedfs",
+    "OBJECT_STORE_PROFILE": "seaweedfs",
+    "STORAGE_IMPL": "AWS_S3",
+    "DB_TYPE": "postgres",
+    "METADATA_DB_PROFILE": "postgres"
+  },
+  "rejected_as_commercial_default": [
+    "elasticsearch",
+    "pgsty/silo",
+    "mysql"
+  ],
+  "disclaimer": "approved engineering default (BRE-206); not a legal full-green claim",
+  "updated_at": "2026-11-05T18:15:00+08:00"
+}
