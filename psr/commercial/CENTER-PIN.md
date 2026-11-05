@@ -11,3 +11,5 @@
 - Wording: approved engineering default — not legal full-green.
 
 Files: `CENTER.lock.json`, `STACK.lock.json` (same dual fields).
+
+Repo: `brentlee-personal/psr` (formerly `ragflow-psr`; old clone URL redirects).

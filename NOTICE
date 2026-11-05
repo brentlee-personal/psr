@@ -1,7 +1,7 @@
 NOTICE
 ======
 
-This repository (`brentlee-personal/ragflow-psr`) is the Private Semantic Runtime
+This repository (`brentlee-personal/psr` (formerly `ragflow-psr`)) is the Private Semantic Runtime
 (PSR) center buffer for RAGFlow.
 
 ## Upstream application
