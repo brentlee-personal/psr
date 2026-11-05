@@ -1,0 +1,39 @@
+NOTICE
+======
+
+This repository (`brentlee-personal/ragflow-psr`) is the Private Semantic Runtime
+(PSR) center buffer for RAGFlow.
+
+## Upstream application
+
+This distribution includes software developed by the InfiniFlow Authors:
+
+    Copyright 2024–2026 The InfiniFlow Authors
+    Licensed under the Apache License, Version 2.0
+    Source pin: RAGFlow v0.27.3
+    Commit: 8090ffd8ba6098813d7f7ec2c4b8774f36c8423a
+
+The Apache License text is in the file LICENSE at the repository root.
+
+## PSR center modifications
+
+Additional files under `psr/`, PSR compose overlays, NOTICE, and
+THIRD_PARTY_NOTICES.md are Copyright 2026 Lee Brent / PSR contributors and are
+also licensed under Apache-2.0 unless a file states otherwise.
+
+## Engineering default stack (approved BRE-206)
+
+This is an **engineering default**, not a legal clearance / “full green” claim:
+
+1. DOC_ENGINE = Infinity (alternate: OpenSearch). Default Elasticsearch is rejected
+   for the PSR commercial default (SSPL / Elastic License 2.0 SaaS restrictions).
+2. Object storage = SeaweedFS (Apache-2.0). Default pgsty/silo (AGPL-3.0) is
+   rejected for the PSR commercial default.
+3. Metadata database = PostgreSQL (PostgreSQL License). Default MySQL Community
+   (GPL-2.0) is rejected for the PSR commercial default.
+
+Optional legacy profiles that still ship upstream compose fragments (Elasticsearch,
+silo/MinIO-lineage AGPL images, MySQL) remain available for non-commercial or
+explicitly accepted copyleft workflows; they are **not** the PSR commercial default.
+
+See THIRD_PARTY_NOTICES.md for the pin-bound component inventory.

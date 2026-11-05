@@ -138,25 +138,27 @@ user_default_llm:
     embedding_model:
       api_key: 'xxx'
       base_url: 'http://${TEI_HOST}:80'
-# postgres:
-#   name: '${POSTGRES_DBNAME:-rag_flow}'
-#   user: '${POSTGRES_USER:-rag_flow}'
-#   password: '${POSTGRES_PASSWORD:-infini_rag_flow}'
-#   host: '${POSTGRES_HOST:-postgres}'
-#   port: 5432
-#   max_connections: 100
-#   stale_timeout: 30
+# PSR BRE-206: postgres is the commercial metadata default (DB_TYPE=postgres).
+postgres:
+  name: '${POSTGRES_DBNAME:-rag_flow}'
+  user: '${POSTGRES_USER:-rag_flow}'
+  password: '${POSTGRES_PASSWORD:-infini_rag_flow}'
+  host: '${POSTGRES_HOST:-postgres}'
+  port: ${POSTGRES_PORT:-5432}
+  max_connections: 100
+  stale_timeout: 30
 # GaussDB metadata DB is configured through GAUSSDB_METADATA_* environment
 # variables and is intentionally not rendered into service_conf.yaml.
-# s3:
-#   access_key: 'access_key'
-#   secret_key: 'secret_key'
-#   region: 'region'
-#   endpoint_url: 'endpoint_url'
-#   bucket: 'bucket'
-#   prefix_path: 'prefix_path'
-#   signature_version: 'v4'
-#   addressing_style: 'path'
+# PSR BRE-206: S3-compatible SeaweedFS (STORAGE_IMPL=AWS_S3). Keys mirror docker/seaweedfs/s3.json.
+s3:
+  access_key: '${MINIO_USER:-rag_flow}'
+  secret_key: '${MINIO_PASSWORD:-infini_rag_flow}'
+  region: '${S3_REGION:-us-east-1}'
+  endpoint_url: 'http://seaweedfs:${SEAWEEDFS_S3_PORT:-8333}'
+  bucket: '${S3_BUCKET:-}'
+  prefix_path: '${S3_PREFIX_PATH:-}'
+  signature_version: 'v4'
+  addressing_style: 'path'
 # oss:
 #   access_key: '${ACCESS_KEY}'
 #   secret_key: '${SECRET_KEY}'
