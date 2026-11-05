@@ -1,0 +1,17 @@
+{
+  "empty": {
+    "code": 0,
+    "data": {
+      "chunks": [],
+      "doc_aggs": [],
+      "total": 0
+    }
+  },
+  "neg_auth": {
+    "code": 401,
+    "body": "{\"code\":401,\"data\":null,\"message\":\"<Unauthorized '401: Unauthorized'>\"}\n"
+  },
+  "parse_ok": true,
+  "doc_engine": "elasticsearch",
+  "note": "ARM64 smoke workaround; commercial default remains Infinity/OpenSearch (BRE-206)"
+}

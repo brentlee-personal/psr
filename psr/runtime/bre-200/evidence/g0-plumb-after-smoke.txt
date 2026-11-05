@@ -1,0 +1,4 @@
+2026-11-05T18:30:22.890676+08:00
+{"status":"ok","service":"psr-m0-api"}
+  PID     ELAPSED COMMAND
+92856 03-01:33:19 /Users/libin/.kiro/crew/run/decisions/plumb-4b/env/bin/python -I /Users/libin/.kiro/crew/run/decisions/plumb-4b/env/plumb_cpu.py --weights /Users/libin/.kiro/crew/decisions/models/plumb-4b/24f7bf77e7ee258a2d158c61ea2dce2b60321010 --port 8102

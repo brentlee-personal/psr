@@ -1,0 +1,7 @@
+NAME                            IMAGE                                          COMMAND                  SERVICE       CREATED          STATUS                    PORTS
+ragflow-psr-m05-es01-1          elasticsearch:8.11.3                           "/bin/tini -- /usr/l…"   es01          2 minutes ago    Up 2 minutes (healthy)    9300/tcp, 127.0.0.1:19200->9200/tcp
+ragflow-psr-m05-minio-1         pgsty/silo:RELEASE.2026-08-06T00-00-00Z        "/usr/bin/docker-ent…"   minio         43 minutes ago   Up 43 minutes (healthy)   127.0.0.1:29000->9000/tcp, 127.0.0.1:29001->9001/tcp
+ragflow-psr-m05-mysql-1         mysql:8.0.40                                   "docker-entrypoint.s…"   mysql         2 minutes ago    Up 2 minutes (healthy)    33060/tcp, 127.0.0.1:23306->3306/tcp
+ragflow-psr-m05-ragflow-cpu-1   infiniflow/ragflow:v0.27.3                     "./entrypoint.sh --e…"   ragflow-cpu   2 minutes ago    Up 2 minutes              127.0.0.1:19680->80/tcp, 127.0.0.1:19681->443/tcp, 127.0.0.1:19682->9380/tcp, 127.0.0.1:19683->9381/tcp, 127.0.0.1:19684->9382/tcp
+ragflow-psr-m05-redis-1         valkey/valkey:8                                "tini -- docker-entr…"   redis         43 minutes ago   Up 43 minutes (healthy)   127.0.0.1:26379->6379/tcp
+ragflow-psr-m05-tei-cpu-1       infiniflow/text-embeddings-inference:cpu-1.8   "text-embeddings-rou…"   tei-cpu       21 minutes ago   Up 21 minutes             127.0.0.1:16380->80/tcp

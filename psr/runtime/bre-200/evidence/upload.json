@@ -1,0 +1,71 @@
+{
+  "code": 0,
+  "data": [
+    {
+      "chunk_method": "naive",
+      "content_hash": "f3e12a6b2ef99d3e4158b56e0bfee56a",
+      "created_by": "ec5d21a0d8ff11f18c586f3b93d678d1",
+      "dataset_id": "deb76214d90311f1aaf1f53e5c9c2fb5",
+      "id": "deb955d8d90311f1aaf1f53e5c9c2fb5",
+      "location": "sample.md",
+      "name": "sample.md",
+      "parser_config": {
+        "auto_keywords": 0,
+        "auto_questions": 0,
+        "children_delimiter": "",
+        "chunk_token_num": 512,
+        "delimiter": "\n",
+        "html4excel": false,
+        "image_context_size": 0,
+        "layout_recognize": "DeepDOC",
+        "llm_id": "",
+        "parent_child": {
+          "children_delimiter": "\n",
+          "use_parent_child": false
+        },
+        "table_context_size": 0,
+        "topn_tags": 3
+      },
+      "pipeline_id": null,
+      "run": "UNSTART",
+      "size": 242,
+      "source_type": "local",
+      "suffix": "md",
+      "thumbnail": "",
+      "type": "doc"
+    },
+    {
+      "chunk_method": "naive",
+      "content_hash": "9439e0b8af420836d7c3cc80fb0e155d",
+      "created_by": "ec5d21a0d8ff11f18c586f3b93d678d1",
+      "dataset_id": "deb76214d90311f1aaf1f53e5c9c2fb5",
+      "id": "debae466d90311f1aaf1f53e5c9c2fb5",
+      "location": "sample.pdf",
+      "name": "sample.pdf",
+      "parser_config": {
+        "auto_keywords": 0,
+        "auto_questions": 0,
+        "children_delimiter": "",
+        "chunk_token_num": 512,
+        "delimiter": "\n",
+        "html4excel": false,
+        "image_context_size": 0,
+        "layout_recognize": "DeepDOC",
+        "llm_id": "",
+        "parent_child": {
+          "children_delimiter": "\n",
+          "use_parent_child": false
+        },
+        "table_context_size": 0,
+        "topn_tags": 3
+      },
+      "pipeline_id": null,
+      "run": "UNSTART",
+      "size": 607,
+      "source_type": "local",
+      "suffix": "pdf",
+      "thumbnail": "thumbnail_debae466d90311f1aaf1f53e5c9c2fb5.png",
+      "type": "pdf"
+    }
+  ]
+}
