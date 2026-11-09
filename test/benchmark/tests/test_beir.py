@@ -101,6 +101,61 @@ class RankingTests(unittest.TestCase):
                 aggregate_documents([{"chunk_id": "a", "document_id": "d1", "score": score}], mapping)
 
 class RecoveryTests(unittest.TestCase):
+    def test_formal_run_refuses_an_unapproved_protocol_before_worker_start(self):
+        from unittest.mock import patch
+
+        from benchmark import beir
+        with tempfile.TemporaryDirectory(dir=os.environ["KIROCREW_SCRATCH"]) as directory:
+            root = Path(directory)
+            for verdict, code, evaluator in [("PARTIAL", "fixed", "/root/independent_eval"), ("PASS", "other", "/root/independent_eval"), ("PASS", "fixed", "/root")]:
+                beir.write_json(root / "preflight-verdict.json", {"verdict": verdict, "controller_code_sha": code, "evaluator_id": evaluator,
+                                "approved_at": "2000-01-01T00:00:00+00:00"})
+                with patch.object(beir, "source_identity", return_value={"code_sha": "fixed"}), patch.object(beir, "Worker") as worker, \
+                     self.assertRaisesRegex(ValueError, "independent preflight"):
+                    beir.run_evaluation(root, "baseline")
+                worker.assert_not_called()
+
+    def test_attempt_persistence_is_outside_query_timing(self):
+        from unittest.mock import MagicMock, patch
+
+        from benchmark import beir
+        clock, captured = [0.0], []
+        worker = MagicMock()
+        worker.container = "ragflow-psr-test"
+        worker.__enter__.return_value = worker
+        def call(action, **arguments):
+            if action == "query":
+                clock[0] += 3.0
+                return {"hits": [{"chunk_id": "chunk", "document_id": "doc", "score": 1.0}]}
+            return {"source_hashes": {}, "worker_sha256": "fixed", "nlp": {}}
+        worker.call.side_effect = call
+        with tempfile.TemporaryDirectory(dir=os.environ["KIROCREW_SCRATCH"]) as directory:
+            root = Path(directory)
+            protocol = {"execution": {"warmup": []}, "routes": {"psr": {"parameters": {}}}}
+            for name, value in {"resources.json": {"dataset_id": "dataset"}, "data/test-queries.json": [{"query_id": "query", "text": "fixture"}],
+                                "document-map.json": [{"document_id": "doc", "scifact_id": "original"}], "chunk-map.json": {}, "protocol.json": protocol}.items():
+                beir.write_json(root / name, value)
+            beir.write_json(root / "preflight-verdict.json", {"verdict": "PASS", "controller_code_sha": "fixed",
+                            "protocol_sha256": beir.sha256((root / "protocol.json").read_bytes()), "evaluator_id": "/root/independent_eval"})
+            observation = {"container": {"name": worker.container}, "runtime_sources": {}, "vector_values_sha256": "fixed", "model_sentinels": {}}
+            beir.write_json(root / "preflight.json", {"variants": {"baseline": observation}})
+            beir.write_json(root / "preflight-verdict.json", {"verdict": "PASS", "controller_code_sha": "fixed",
+                            "protocol_sha256": beir.sha256((root / "protocol.json").read_bytes()), "evaluator_id": "/root/independent_eval",
+                            "approved_at": "2000-01-01T00:00:00+00:00", "input_manifest_sha256": beir.sha256((root / "preflight.json").read_bytes()),
+                            "tool_sha256": beir.sha256(Path(beir.__file__).with_name("beir_verify.py").read_bytes())})
+            real_write = beir.write_json
+            def slow_write(*args):
+                clock[0] += 10.0
+                real_write(*args)
+            with patch.object(beir, "Worker", return_value=worker), patch.object(beir, "source_identity", return_value={"code_sha": "fixed"}), \
+                 patch.object(beir, "freeze_protocol", return_value=protocol), patch.object(beir, "write_json", side_effect=slow_write), \
+                 patch.object(beir, "observe_runtime", return_value=observation), \
+                 patch.object(beir, "save_scoring", side_effect=lambda campaign, target, rows: captured.extend(rows)), \
+                 patch("time.perf_counter", side_effect=lambda: clock[0]):
+                beir.run_evaluation(root, "baseline")
+        self.assertEqual(len(captured), 3)
+        self.assertEqual([row["elapsed_s"] for row in captured], [3.0, 3.0, 3.0])
+
     def test_interrupted_attempt_is_retained_without_retry_or_fake_time(self):
         from benchmark.beir import existing_result, write_json
         with tempfile.TemporaryDirectory(dir=os.environ["KIROCREW_SCRATCH"]) as directory:

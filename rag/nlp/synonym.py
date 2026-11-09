@@ -94,7 +94,7 @@ class Dealer:
         if re.fullmatch(r"[a-z]+", tk):
             wn_set = {re.sub("_", " ", syn.name().split(".")[0]) for syn in wordnet.synsets(tk)}
             wn_set.discard(tk)  # Remove the original token itself
-            wn_res = [t for t in wn_set if t]
+            wn_res = sorted(t for t in wn_set if t)
             return wn_res[:topn]
 
         # 3) Nothing found in either source

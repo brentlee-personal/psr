@@ -11,6 +11,8 @@ from pathlib import Path
 
 SOURCE_URL = "https://public.ukp.informatik.tu-darmstadt.de/thakur/BEIR/datasets/scifact.zip"
 OFFICIAL_MD5 = "5f7d1de60b170fc8027bb7898e2efca1"
+BASELINE_SOURCE = "cc8460a2cca95febd706e1a25f686abd52303dac"
+ES_ADAPTER = "common/doc_store/es_conn_base.py"
 
 
 def sha256(data):
@@ -152,11 +154,11 @@ class RemoteError(RuntimeError):
 
 
 class Worker:
-    def __init__(self):
+    def __init__(self, container=None):
         import re
         import select
         import subprocess
-        self.container = os.environ.get("PSR_BEIR_CONTAINER", "ragflow-psr-m05-ragflow-cpu-1")
+        self.container = container or os.environ.get("PSR_BEIR_CONTAINER", "ragflow-psr-m05-ragflow-cpu-1")
         if not re.fullmatch(r"ragflow-psr-[a-zA-Z0-9_.-]+", self.container):
             raise ValueError("Invalid PSR evaluation container")
         source = Path(__file__).with_name("beir_engine.py").read_text()
@@ -167,6 +169,7 @@ class Worker:
                                   "engine_namespace['main'](helper_namespace['HttpClient'], " + repr(digest) + ")", ""])
         self.process = subprocess.Popen(
             ["docker", "--host", "unix:///Users/libin/.colima/default/docker.sock", "exec", "-i",
+             "-e", "PYTHONHASHSEED=0",
              self.container, "python3", "-u", "-c", bootstrap],
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True,
         )
@@ -214,11 +217,64 @@ class Worker:
         self.close()
 
 
+def baseline_override():
+    import subprocess
+    root = Path(__file__).resolve().parents[2]
+    content = subprocess.check_output(["git", "show", BASELINE_SOURCE + ":" + ES_ADAPTER], cwd=root)
+    return {"source_commit": BASELINE_SOURCE, "sha256": sha256(content), "reason": "Control retaining raw ES scores; all other runtime sources match the controller"}
+
+
+def container_identity(name):
+    import subprocess
+    docker = ["docker", "--host", "unix:///Users/libin/.colima/default/docker.sock"]
+    value = json.loads(subprocess.check_output(docker + ["inspect", name], stderr=subprocess.DEVNULL))[0]
+    image = json.loads(subprocess.check_output(docker + ["image", "inspect", value["Image"]], stderr=subprocess.DEVNULL))[0]
+    if not value["State"]["Running"]:
+        raise ValueError("Evaluation API is not running")
+    environment = dict(row.split("=", 1) for row in value["Config"]["Env"])
+    return {"id": value["Id"], "name": name, "image_id": value["Image"], "platform": image["Os"] + "/" + image["Architecture"],
+            "memory_bytes": value["HostConfig"]["Memory"], "nano_cpus": value["HostConfig"]["NanoCpus"],
+            "published_ports": value["HostConfig"]["PortBindings"], "python_hash_seed": environment.get("PYTHONHASHSEED"),
+            "started_at": value["State"]["StartedAt"]}
+
+
+def observe_runtime(campaign, worker, code_sha, variant):
+    campaign = Path(campaign)
+    resources = json.loads((campaign / "resources.json").read_text())
+    runtime = worker.call("status")
+    mapping = worker.call("mapping", dataset_id=resources["dataset_id"])
+    if mapping["invalid_vectors"] or mapping["vector_dimensions"] != [384] or len(mapping["chunks"]) != 5467:
+        raise ValueError("Public index vector coverage is invalid")
+    map_path = campaign / "chunk-map.json"
+    if not map_path.exists():
+        write_json(map_path, mapping)
+    if json.loads(map_path.read_text()) != mapping:
+        raise ValueError("Public index contents or vector values drifted")
+    sources = {}
+    override = baseline_override()
+    for path, digest in runtime["source_hashes"].items():
+        sources[path] = ({**override, "role": "intentional_override"} if variant == "baseline" and path == ES_ADAPTER else
+                         {"source_commit": code_sha, "sha256": digest, "role": "controller", "reason": "Unmodified controller runtime source"})
+    return {"runtime": runtime, "container": container_identity(worker.container), "runtime_sources": sources,
+            "index_configuration": worker.call("index_configuration", dataset_id=resources["dataset_id"]),
+            "vector_values_sha256": mapping["vector_values_sha256"], "mapping_sha256": sha256(map_path.read_bytes()),
+            "model_sentinels": worker.call("model_sentinels", dataset_id=resources["dataset_id"]),
+            "non_test_psr_witness": worker.call("non_test_witness", dataset_id=resources["dataset_id"], parameters=worker.call("defaults"))}
+
+
 def preflight(campaign):
-    with Worker() as worker:
-        observed = worker.call("status")
-    write_json(Path(campaign) / "runtime-binding.json", observed)
-    print(json.dumps({k: v for k, v in observed.items() if k != "dataset_configs"}, ensure_ascii=False))
+    campaign = Path(campaign)
+    identity = source_identity()
+    observations = {}
+    for variant in ("baseline", "candidate"):
+        with Worker("ragflow-psr-bre218-v2-" + variant) as worker:
+            observations[variant] = observe_runtime(campaign, worker, identity["code_sha"], variant)
+            freeze_protocol(campaign, worker)
+    receipt = {"schema": "psr-beir-preflight-v2", "code_sha": identity["code_sha"],
+               "protocol_sha256": sha256((campaign / "protocol.json").read_bytes()), "variants": observations}
+    write_json(campaign / "preflight.json", receipt)
+    print(json.dumps({"phase": "observed", "code_sha": identity["code_sha"], "protocol_sha256": receipt["protocol_sha256"],
+                      "independent_preflight": "required before any test attempt"}))
 
 def all_documents(client, identity):
     from .dataset import list_documents
@@ -319,6 +375,9 @@ def freeze_protocol(campaign, worker):
     if not resources.get("complete"):
         raise ValueError("Full index coverage is not verified")
     observed = worker.call("status")
+    mapping = worker.call("mapping", dataset_id=resources["dataset_id"])
+    if observed["nlp"]["python_hash_seed"] != "0":
+        raise ValueError("Controlled comparison requires PYTHONHASHSEED=0")
     defaults = worker.call("defaults")
     configuration = worker.call("index_configuration", dataset_id=resources["dataset_id"])
     configuration.pop("index_name")
@@ -329,7 +388,12 @@ def freeze_protocol(campaign, worker):
     if len(vector_fields) != 1 or vector_fields[0].get("similarity") != "cosine":
         raise ValueError("Current vector similarity is not the verified cosine configuration")
     protocol = {
-        "schema": "psr-beir-protocol-v1", "dataset": "SciFact",
+        "schema": "psr-beir-protocol-v2", "dataset": "SciFact",
+        "controlled_v2": {"schema": "psr-beir-controlled-v2", "controller_code_sha": source_identity()["code_sha"],
+                          "variants": {"baseline": {"runtime_overrides": {ES_ADAPTER: baseline_override()}}, "candidate": {"runtime_overrides": {}}}},
+        "nlp": observed["nlp"], "index_vector_sha256": mapping["vector_values_sha256"],
+        "model_sentinels": worker.call("model_sentinels", dataset_id=resources["dataset_id"]),
+        "effective_parser_config": next(row["parser_config"] for row in observed["dataset_configs"] if row["id"] == resources["dataset_id"]),
         "data_manifest_sha256": sha256((campaign / "data-manifest.json").read_bytes()),
         "test_queries_sha256": sha256((campaign / "data/test-queries.json").read_bytes()),
         "model": json.loads((campaign / "model-binding.json").read_text()),
@@ -441,6 +505,19 @@ def run_evaluation(campaign, run_id):
         raise ValueError("Invalid run ID")
     campaign = Path(campaign)
     identity = source_identity()
+    approval = json.loads((campaign / "preflight-verdict.json").read_text())
+    approved_at = datetime.datetime.fromisoformat(approval["approved_at"])
+    if (approval.get("verdict") != "PASS" or approval.get("controller_code_sha") != identity["code_sha"]
+            or not str(approval.get("evaluator_id", "")).startswith("/root/")
+            or approval.get("protocol_sha256") != sha256((campaign / "protocol.json").read_bytes())
+            or approval.get("input_manifest_sha256") != sha256((campaign / "preflight.json").read_bytes())
+            or approval.get("tool_sha256") != sha256(Path(__file__).with_name("beir_verify.py").read_bytes())
+            or approved_at.tzinfo is None or approved_at > datetime.datetime.now(datetime.UTC)):
+        raise ValueError("A matching independent preflight PASS is required")
+    variant = run_id.split("-", 1)[0]
+    observations = json.loads((campaign / "preflight.json").read_text())["variants"]
+    if variant not in observations:
+        raise ValueError("Run ID must start with baseline or candidate")
     resources = json.loads((campaign / "resources.json").read_text())
     queries = json.loads((campaign / "data/test-queries.json").read_text())
     documents = json.loads((campaign / "document-map.json").read_text())
@@ -456,13 +533,18 @@ def run_evaluation(campaign, run_id):
     records = []
     blocked = False
     try:
-        with Worker() as worker:
+        with Worker(observations[variant]["container"]["name"]) as worker:
             protocol = freeze_protocol(campaign, worker)
             protocol_sha = sha256((campaign / "protocol.json").read_bytes())
             runtime = worker.call("status")
+            observed = observe_runtime(campaign, worker, identity["code_sha"], variant)
+            if observed != observations[variant]:
+                raise ValueError("Runtime controls differ from the independently reviewed preflight")
             settings = worker.call("index_configuration", dataset_id=resources["dataset_id"])
             binding = {"schema": "psr-beir-run-v1", **identity, "protocol_sha256": protocol_sha,
                        "container_name": worker.container,
+                       "runtime_sources": observed["runtime_sources"], "variant": variant,
+                       "vector_values_sha256": observed["vector_values_sha256"], "model_sentinels": observed["model_sentinels"],
                        "dataset_id": resources["dataset_id"], "runtime": runtime,
                        "document_map_sha256": sha256((campaign / "document-map.json").read_bytes()),
                        "chunk_map_sha256": sha256((campaign / "chunk-map.json").read_bytes()),
@@ -497,12 +579,12 @@ def run_evaluation(campaign, run_id):
                     row = {"run_id": run_id, "route": route, "query_id": query["query_id"],
                            "protocol_sha256": protocol_sha, "attempt": 1, "documents": [],
                            "started_at": datetime.datetime.now(datetime.UTC).isoformat()}
-                    started = time.perf_counter()
                     if blocked:
                         row.update(state="not_attempted", attempt=0, elapsed_s=None,
                                    error={"type": "TransportBlocked", "message": "Backend completion or authorization is not verified"})
                     else:
                         write_json(raw_path.with_suffix(".attempt.json"), {**row, "state": "in_flight"})
+                        started = time.perf_counter()
                         try:
                             reply = worker.call("query", dataset_id=resources["dataset_id"], route=route,
                                                 question=query["text"], parameters=parameters)
@@ -526,9 +608,13 @@ def run_evaluation(campaign, run_id):
                     print(json.dumps({"phase": "queries", "run": run_id, "queries": ordinal + 1, "records": len(records)}), flush=True)
             if not blocked:
                 after = worker.call("status")
-                if after["source_hashes"] != runtime["source_hashes"] or after["worker_sha256"] != runtime["worker_sha256"]:
+                if after["source_hashes"] != runtime["source_hashes"] or after["worker_sha256"] != runtime["worker_sha256"] or after["nlp"] != runtime["nlp"]:
                     raise ValueError("Runtime source changed during the run")
                 write_json(directory / "runtime-after.json", after)
+                after_observed = observe_runtime(campaign, worker, identity["code_sha"], variant)
+                write_json(directory / "controls-after.json", after_observed)
+                if after_observed != observed:
+                    raise ValueError("Runtime, lexical, model sentinel or index controls drifted during the run")
         if len(records) != len(queries) * 3:
             raise ValueError("Run did not cover all three paths and all test queries")
         save_scoring(campaign, directory, records)

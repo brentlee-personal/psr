@@ -86,7 +86,8 @@ def status():
     if not reference:
         raise ValueError("Current embedding configuration is not identifiable")
     source = reference[0]
-    paths = ["api/apps/restful_apis/chunk_api.py", "rag/nlp/search.py", "rag/utils/es_conn.py", "common/doc_store/es_conn_base.py", "rag/llm/embedding_model.py", "api/db/services/llm_service.py"]
+    paths = ["api/apps/restful_apis/chunk_api.py", "rag/nlp/search.py", "rag/utils/es_conn.py", "common/doc_store/es_conn_base.py", "rag/llm/embedding_model.py", "api/db/services/llm_service.py",
+             "rag/nlp/query.py", "rag/nlp/term_weight.py", "rag/nlp/synonym.py", "rag/nlp/rag_tokenizer.py"]
     return {
         "http_status": 200, "business_code": value["code"], "backend": SETTINGS.DOC_ENGINE,
         "dataset_configs": [{key: d.get(key) for key in ("id", "name", "embedding_model", "chunk_method", "parser_config")} for d in configs],
@@ -94,7 +95,34 @@ def status():
         "parser_config": source["parser_config"], "chunk_method": source["chunk_method"],
         "source_hashes": {p: hashlib.sha256((Path("/ragflow") / p).read_bytes()).hexdigest() for p in paths},
         "worker_sha256": WORKER_SHA256,
+        "nlp": nlp_identity(),
     }
+
+
+def nlp_identity():
+    import importlib.metadata
+
+    import infinity.rag_tokenizer
+    from nltk.corpus import wordnet
+    wordnet.ensure_loaded()
+    pointer = wordnet.root
+    archive = getattr(getattr(pointer, "zipfile", None), "filename", None)
+    paths = [Path(archive)] if archive else sorted(p for p in Path(str(pointer)).rglob("*") if p.is_file())
+    assets = {str(p): hashlib.sha256(p.read_bytes()).hexdigest() for p in paths}
+    query = SETTINGS.retriever.qryr
+    raw = query.syn.redis.get("kevin_synonyms") if query.syn.redis else None
+    if isinstance(raw, str):
+        raw = raw.encode()
+    lexical = {name: Path("/ragflow/rag/res") / name for name in ("synonym.json", "term.freq", "ner.json")}
+    return {"python_hash_seed": os.environ.get("PYTHONHASHSEED"),
+            "effective_synonyms_sha256": hashlib.sha256(json.dumps(query.syn.dictionary, sort_keys=True, ensure_ascii=False).encode()).hexdigest(),
+            "redis_synonyms_sha256": hashlib.sha256(raw if raw is not None else b"ABSENT:kevin_synonyms").hexdigest(),
+            "redis_synonyms_state": "absent" if raw is None else "empty" if not raw else "present",
+            "wordnet_version": wordnet.get_version(), "wordnet_assets": assets,
+            "lexical_assets": {name: hashlib.sha256(p.read_bytes()).hexdigest() for name, p in lexical.items() if p.is_file()},
+            "lexical_asset_presence": {name: p.is_file() for name, p in lexical.items()},
+            "infinity_tokenizer_source_sha256": hashlib.sha256(Path(infinity.rag_tokenizer.__file__).read_bytes()).hexdigest(),
+            "infinity_sdk_version": importlib.metadata.version("infinity-sdk")}
 
 
 def upload(command):
@@ -128,7 +156,7 @@ def mapping(command):
                 query={"query": {"term": {"kb_id": identity}},
                        "_source": ["id", "doc_id", "content_with_weight", "available_int", "q_*_vec"]},
                 request_timeout=60)
-    chunks, dimensions, invalid = [], set(), []
+    chunks, dimensions, invalid, vector_rows = [], set(), [], []
     for hit in rows:
         source = hit["_source"]
         fields = [key for key in source if key.startswith("q_") and key.endswith("_vec")]
@@ -138,11 +166,13 @@ def mapping(command):
             invalid.append(hit["_id"])
         if valid:
             dimensions.add(len(vectors[0]))
+            vector_rows.append((hit["_id"], vectors[0]))
         chunks.append({"chunk_id": hit["_id"], "document_id": source["doc_id"],
                        "content_sha256": hashlib.sha256(source["content_with_weight"].encode()).hexdigest(),
                        "content_chars": len(source["content_with_weight"]), "available": source.get("available_int", 1)})
     return {"index_name": index, "dataset_id": identity, "chunks": sorted(chunks, key=lambda d: d["chunk_id"]),
-            "vector_dimensions": sorted(dimensions), "invalid_vectors": invalid}
+            "vector_dimensions": sorted(dimensions), "invalid_vectors": invalid,
+            "vector_values_sha256": hashlib.sha256(json.dumps(sorted(vector_rows), separators=(",", ":"), allow_nan=False).encode()).hexdigest()}
 
 def runtime_defaults():
     import ast
@@ -176,6 +206,18 @@ def current_model(identity):
             config = resolve_model_config(kb.tenant_id, LLMType.EMBEDDING, kb.embd_id)
         MODELS[identity] = LLMBundle(kb.tenant_id, config, lang="English")
     return MODELS[identity]
+
+
+def model_sentinels(command):
+    model = current_model(command["dataset_id"])
+    result = {}
+    for text in ("stem cell differentiation", "protein expression", "clinical trial results"):
+        vector, _ = model.encode_queries(text)
+        values = vector.tolist()
+        if len(values) != 384 or not all(math.isfinite(v) for v in values):
+            raise ValueError("Model sentinel embedding is invalid")
+        result[text] = hashlib.sha256(json.dumps(values, separators=(",", ":")).encode()).hexdigest()
+    return result
 
 
 def native_query(command):
@@ -237,6 +279,31 @@ def psr_query(command):
     return {"hits": hits, "pages": pages, "returned_chunks": len(hits),
             "candidate_limit": window, "api_window_limit": min(100, window) if params["rerank_id"] else (window // page_size) * page_size}
 
+
+def non_test_witness(command):
+    identity = command["dataset_id"]
+    question = "stem cell differentiation"
+    reply = psr_query({"dataset_id": identity, "question": question, "parameters": command["parameters"]})
+    if reply.get("error_type"):
+        raise ValueError("Non-test PSR witness failed")
+    vector, _ = current_model(identity).encode_queries(question)
+    vector = vector.tolist()
+    from api.db.db_models import DB, Knowledgebase
+    from rag.nlp.search import index_name
+    with DB.connection_context():
+        index = index_name(Knowledgebase.get_by_id(identity).tenant_id)
+    rows = reply["pages"][0]["response"]["data"]["chunks"]
+    samples = []
+    for hit in rows[:5]:
+        stored = SETTINGS.docStoreConn.es.get(index=index, id=hit["id"], source_includes=["kb_id", "q_384_vec"])["_source"]
+        if stored["kb_id"] != identity:
+            raise ValueError("Witness chunk escaped the public dataset")
+        samples.append({"chunk_id": hit["id"], "chunk_vector": stored["q_384_vec"],
+                        "reported_vector_similarity": hit["vector_similarity"]})
+    return {"question": question, "query_vector": vector, "samples": samples,
+            "returned_scores": [{key: row[key] for key in ("id", "document_id", "term_similarity", "vector_similarity", "similarity")} for row in rows],
+            "http_status": 200, "business_code": reply["pages"][0]["response"]["code"]}
+
 def index_configuration(command):
     from api.db.db_models import DB, Knowledgebase
     from rag.nlp.search import index_name
@@ -273,6 +340,10 @@ def dispatch(command):
         return psr_query(command) if command["route"] == "psr" else native_query(command)
     if action == "index_configuration":
         return index_configuration(command)
+    if action == "model_sentinels":
+        return model_sentinels(command)
+    if action == "non_test_witness":
+        return non_test_witness(command)
     raise ValueError("Unsupported worker action")
 
 
