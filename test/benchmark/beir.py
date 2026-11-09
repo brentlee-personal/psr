@@ -133,7 +133,14 @@ def prepare_data(campaign, archive):
         "normalization": "strip title and abstract; title + two newlines + abstract; UTF-8",
         "gold_indexed": False,
     }
-    write_json(campaign / "data-manifest.json", manifest)
+    manifest_path = campaign / "data-manifest.json"
+    if manifest_path.exists():
+        saved = json.loads(manifest_path.read_text())
+        acquisition = {"acquisition", "cache_source", "acquired_for_campaign_at", "source_cache_mtime"}
+        if {k: v for k, v in saved.items() if k not in acquisition} != {k: v for k, v in manifest.items() if k not in acquisition}:
+            raise ValueError("Existing campaign data manifest differs")
+        return saved
+    write_json(manifest_path, manifest)
     return manifest
 
 
@@ -146,8 +153,12 @@ class RemoteError(RuntimeError):
 
 class Worker:
     def __init__(self):
+        import re
         import select
         import subprocess
+        self.container = os.environ.get("PSR_BEIR_CONTAINER", "ragflow-psr-m05-ragflow-cpu-1")
+        if not re.fullmatch(r"ragflow-psr-[a-zA-Z0-9_.-]+", self.container):
+            raise ValueError("Invalid PSR evaluation container")
         source = Path(__file__).with_name("beir_engine.py").read_text()
         helper = Path(__file__).with_name("http_client.py").read_text()
         digest = sha256((source + helper).encode())
@@ -156,7 +167,7 @@ class Worker:
                                   "engine_namespace['main'](helper_namespace['HttpClient'], " + repr(digest) + ")", ""])
         self.process = subprocess.Popen(
             ["docker", "--host", "unix:///Users/libin/.colima/default/docker.sock", "exec", "-i",
-             "ragflow-psr-m05-ragflow-cpu-1", "python3", "-u", "-c", bootstrap],
+             self.container, "python3", "-u", "-c", bootstrap],
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True,
         )
         if not select.select([self.process.stdout], [], [], 120)[0]:
@@ -451,6 +462,7 @@ def run_evaluation(campaign, run_id):
             runtime = worker.call("status")
             settings = worker.call("index_configuration", dataset_id=resources["dataset_id"])
             binding = {"schema": "psr-beir-run-v1", **identity, "protocol_sha256": protocol_sha,
+                       "container_name": worker.container,
                        "dataset_id": resources["dataset_id"], "runtime": runtime,
                        "document_map_sha256": sha256((campaign / "document-map.json").read_bytes()),
                        "chunk_map_sha256": sha256((campaign / "chunk-map.json").read_bytes()),

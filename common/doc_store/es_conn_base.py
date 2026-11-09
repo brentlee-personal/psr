@@ -296,9 +296,7 @@ class ESConnectionBase(DocStoreConnection):
 
     def get_scores(self, res) -> dict[str, float]:
         """
-        Map hit `_id` to its raw `_score`. Used to recover the cosine
-        similarity returned by a KNN-only search without pulling the
-        chunk vectors out of the index.
+        Recover cosine similarity from an Elasticsearch KNN-only response.
         """
         out = {}
         for d in res.get("hits", {}).get("hits", []):
@@ -306,7 +304,7 @@ class ESConnectionBase(DocStoreConnection):
             if doc_id is None:
                 continue
             score = d.get("_score")
-            out[doc_id] = float(score) if score is not None else 0.0
+            out[doc_id] = 2.0 * float(score) - 1.0 if score is not None else 0.0
         return out
 
     def _get_source(self, res):

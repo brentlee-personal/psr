@@ -86,7 +86,7 @@ def status():
     if not reference:
         raise ValueError("Current embedding configuration is not identifiable")
     source = reference[0]
-    paths = ["api/apps/restful_apis/chunk_api.py", "rag/nlp/search.py", "rag/utils/es_conn.py", "rag/llm/embedding_model.py", "api/db/services/llm_service.py"]
+    paths = ["api/apps/restful_apis/chunk_api.py", "rag/nlp/search.py", "rag/utils/es_conn.py", "common/doc_store/es_conn_base.py", "rag/llm/embedding_model.py", "api/db/services/llm_service.py"]
     return {
         "http_status": 200, "business_code": value["code"], "backend": SETTINGS.DOC_ENGINE,
         "dataset_configs": [{key: d.get(key) for key in ("id", "name", "embedding_model", "chunk_method", "parser_config")} for d in configs],

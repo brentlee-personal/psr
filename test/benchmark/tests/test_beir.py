@@ -35,6 +35,24 @@ class DataTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir=os.environ["KIROCREW_SCRATCH"]) as directory, self.assertRaisesRegex(ValueError, "dangling qrel"):
             load_data(self.archive(directory, dangling=True))
 
+    def test_prepare_preserves_the_frozen_manifest_bytes(self):
+        import hashlib
+        from unittest.mock import patch
+
+        from benchmark.beir import prepare_data, write_json
+        with tempfile.TemporaryDirectory(dir=os.environ["KIROCREW_SCRATCH"]) as directory:
+            archive = self.archive(directory)
+            campaign = Path(directory) / "campaign"
+            with patch("benchmark.beir.OFFICIAL_MD5", hashlib.md5(archive.read_bytes()).hexdigest()):
+                manifest = prepare_data(campaign, archive)
+                manifest.pop("acquired_for_campaign_at")
+                manifest.pop("source_cache_mtime")
+                path = campaign / "data-manifest.json"
+                write_json(path, manifest)
+                before = path.read_bytes()
+                self.assertEqual(prepare_data(campaign, archive), manifest)
+                self.assertEqual(path.read_bytes(), before)
+
 
 class ParseWaitTests(unittest.TestCase):
     def client(self, pages):
@@ -105,6 +123,13 @@ class RecoveryTests(unittest.TestCase):
                 existing_result(path, "baseline", "psr", "query", "fixed")
 
 class CredentialBoundaryTests(unittest.TestCase):
+    def test_invalid_container_is_rejected_before_execution(self):
+        from unittest.mock import patch
+
+        from benchmark.beir import Worker
+        with patch.dict(os.environ, {"PSR_BEIR_CONTAINER": "other-service"}), self.assertRaisesRegex(ValueError, "container"):
+            Worker()
+
     def test_rpc_error_redacts_the_token_and_url_password(self):
         from unittest.mock import patch
 
