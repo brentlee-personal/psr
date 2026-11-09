@@ -1,5 +1,46 @@
 # RAGFlow HTTP Benchmark CLI
 
+## BRE-218 SciFact full evaluation
+
+The separate `benchmark.beir` entry point runs all 300 SciFact test queries against the existing Mac Studio deployment. It does not register accounts, change tenant defaults, install services, or reuse the historical 20-query smoke scores.
+
+The 2026-11-09 campaign contains 5,183 documents, 5,467 chunks, and two complete three-route runs. Its evidence root is `/Users/libin/repos/brentlee-personal/ragflow-psr/psr/evidence/bre-218-scifact-20261109`. Read `report.md`, `analysis.md`, the frozen `protocol.json`, and each run's `run.json` before interpreting results. Independent evaluator acceptance remains pending until its own receipt exists.
+
+The controller uses a clean committed checkout and Python 3.13. The observed Docker socket is `unix:///Users/libin/.colima/default/docker.sock`. The private worker uses the existing tenant authorization inside the selected PSR container; credentials never cross into the controller. This campaign-specific driver is bound to the recorded tenant and backend, not a generic tenant management command.
+
+The original container is `ragflow-psr-m05-ragflow-cpu-1`. Set `PSR_BEIR_CONTAINER=ragflow-psr-bre218-candidate` for the owned fixed API. It uses the same cached image and a single read-only ES adapter mount. It has no published host ports. Do not replace the business container. The evidence-root `start-candidate.py` verifies the original source and refuses to overwrite an existing candidate.
+
+Actual fixed-run command, executed from `/Users/libin/.kiro/crew/scratch/runtime-35e7cd7b/ragflow-psr-bre218`:
+
+```bash
+env PYTHONPATH=/Users/libin/.kiro/crew/scratch/runtime-35e7cd7b/ragflow-psr-bre218/test PSR_BEIR_CONTAINER=ragflow-psr-bre218-candidate /Users/libin/.kiro/crew/scratch/runtime-35e7cd7b/beir-venv/bin/python -u -m benchmark.beir run --campaign-dir /Users/libin/repos/brentlee-personal/ragflow-psr/psr/evidence/bre-218-scifact-20261109 --run-id candidate
+```
+
+That run ID is finalized and intentionally cannot be overwritten. For another full run, restore the recorded source in a fresh session-owned worktree, recreate the isolated Python 3.13 environment, verify the API/image/model/index identities, and use a new run ID. `KIROCREW_SCRATCH` is supplied by the active session; do not depend on an old session's scratch path surviving.
+
+```bash
+git -C /Users/libin/repos/brentlee-personal/ragflow-psr worktree add --detach "$KIROCREW_SCRATCH/ragflow-psr-bre218" origin/psr/bre-218-scifact-resume-20261109
+env UV_PYTHON_INSTALL_DIR="$KIROCREW_SCRATCH/python" uv venv --python 3.13 "$KIROCREW_SCRATCH/beir-venv"
+uv pip install --python "$KIROCREW_SCRATCH/beir-venv/bin/python" requests==2.32.5 pytest==9.2.0 ruff==0.17.4
+env PYTHONPATH="$KIROCREW_SCRATCH/ragflow-psr-bre218/test" PSR_BEIR_CONTAINER=ragflow-psr-bre218-candidate "$KIROCREW_SCRATCH/beir-venv/bin/python" -m benchmark.beir run --campaign-dir /Users/libin/repos/brentlee-personal/ragflow-psr/psr/evidence/bre-218-scifact-20261109 --run-id candidate-reproduction
+```
+
+The second block is the restart procedure, not a third execution receipt. After removing an owned candidate, rerun the campaign's `start-candidate.py` from the restored checkout environment before querying it. Its source mount must exist throughout the run.
+
+`prepare --archive <path>` validates the official MD5, member hashes, all IDs and test references before using data. An existing matching campaign keeps its manifest bytes. Do not reindex completed documents. `preflight` records authenticated status; `report` reads completed artifacts without requerying. A run source/index change requires a new run ID. Unknown interrupted attempts remain failed, with unknown duration, and are never silently retried.
+
+BM25 and vector use independent native ES queries over the same dataset. PSR uses authenticated HTTP inside the real MS container. The tenant's physical index also holds two existing non-candidate chunks; BM25 statistics include them. PSR's fixed 64-chunk window yields fewer than 100 unique documents. Preserve this limit in Recall@100. Do not fill results from another route or change protocol settings based on test scores.
+
+The model is BGE small v1.5 via existing TEI 1.8.2. Current document embeddings include a 0.1 filename weight. A source replay finds 447 chunks above TEI's 512-token limit; original embedding requests were not captured. Each side ran once, with concurrency one and uncontrolled index cache. Latency includes controller transport and cannot establish engine speed superiority.
+
+Focused checks used for the fixed controller:
+
+```bash
+env PYTHONPATH="$KIROCREW_SCRATCH/ragflow-psr-bre218:$KIROCREW_SCRATCH/ragflow-psr-bre218/test" "$KIROCREW_SCRATCH/beir-venv/bin/python" -m pytest -c /dev/null --confcutdir=test/benchmark/tests test/benchmark/tests --basetemp="$KIROCREW_SCRATCH/pytest-benchmark" -q
+```
+
+Run that command from the execution checkout. The ES cosine unit test uses the installed runtime dependencies without contacting ES. The observed 71-check receipt and red/green ES check belong to the recorded source, not to an arbitrary later checkout.
+
 Run (from repo root):
 ```
   PYTHONPATH=./test uv run -m benchmark [global flags] <chat|retrieval> [command flags]
