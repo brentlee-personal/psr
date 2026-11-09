@@ -1,4 +1,4 @@
-"""Controlled v2 verifier, independently derived from the frozen v1 verifier."""
+"""Final controlled v2 raw-result and runtime-control verification."""
 
 import argparse
 import ast
@@ -386,12 +386,16 @@ def self_test():
         pass
     else:
         raise AssertionError("a missing lexical file was assigned a fabricated digest")
+    assert cosine([1.0] + [0.0] * 383, [0.0, 1.0] + [0.0] * 382) == 0.0
+    assert cosine([1.0] + [0.0] * 383, [-1.0] + [0.0] * 383) == -1.0
+    assert object_differences({"a": [1, {"b": 2}]}, {"a": [1, {"b": 2}]}) == []
+    assert object_differences({"a": [1, {"b": 2}]}, {"a": [1, {"b": 3}]}) == [{"path": ".a[1].b", "before": 2, "after": 3}]
     return {"status": "PASS", "cases": ["graded multiple positives", "duplicate documents",
             "rank 10 and 100 boundaries", "empty, failure and unattempted", "identical query/document IDs",
             "stable tied order", "invalid late mapping discards partial ranking", "PSR later-page failure",
             "nearest-rank percentiles", "equal aggregate with different per-query values",
             "empty term-change set", "declared ES source origin", "undeclared override rejected", "timing boundary",
-            "Redis absent versus empty", "missing lexical asset cannot have a digest"]}
+            "Redis absent versus empty", "missing lexical asset cannot have a digest", "raw cosine geometry", "nested control drift"]}
 
 
 def verify(evidence, output):
@@ -563,7 +567,25 @@ def verify(evidence, output):
     report["comparison"] = compare_engineering(evidence, all_rows, runs)
     report["metric_verdict"] = "PASS" if not issues and not report["comparison"]["differences"] else "FAIL"
     report["audit"] = audit(evidence, all_rows, protocol, queries, read, output)
-    report["overall_verdict"] = "PENDING_INDEPENDENT_REVIEW" if report["metric_verdict"] == "PASS" and report["audit"]["automatic_checks"] == "PASS" else "PARTIAL"
+    report["controlled_evidence"] = audit_controlled_evidence(evidence, protocol, queries, query_ids, read)
+    report["audit"]["cosine_proof_checks"] = report["controlled_evidence"]["non_test_witness"]
+    report["preflight_tool_sha256"] = report["controlled_evidence"]["preflight_tool_sha256"]
+    controlled_pass = (report["metric_verdict"] == "PASS" and report["audit"]["automatic_checks"] == "PASS"
+        and not report["controlled_evidence"]["failures"] and not report["audit"]["cosine_only_replay_mismatch_queries"]
+        and all(report["audit"]["two_run_changes"][route]["native_hit_sequences_changed"] == 0 for route in ("bm25", "vector")))
+    report["overall_verdict"] = "PASS" if controlled_pass else "PARTIAL"
+    report["audit"]["fairness_verdict"] = report["overall_verdict"]
+    report["acceptance"] = {
+        "verdict": report["overall_verdict"], "evaluator_id": IDENTITY,
+        "scope": "Only the frozen controlled-v2 English SciFact document-retrieval comparison and recorded runtime controls.",
+        "quality_attribution": "All 300 candidate PSR returned rankings are reproduced from baseline raw component scores using only the intended cosine conversion, fixed fusion, threshold and stable order." if controlled_pass else "Not accepted.",
+        "psr_delta": {metric: runs["candidate"]["routes"]["psr"][metric] - runs["baseline"]["routes"]["psr"][metric] for metric in METRICS},
+        "same_test_set_retest": True, "speedup_claim": False, "production_acceptance": False,
+        "old_v1_acceptance_unchanged": "PARTIAL",
+        "limits": ["Shared physical-index statistics contain two background chunks.",
+                   "PSR has a 64-chunk window; pure baselines return 100 documents, so route comparisons are configuration comparisons.",
+                   "One run per variant and uncontrolled cache do not establish speed superiority or out-of-sample generalization.",
+                   "Matching cache hashes, index fingerprints and non-test sentinels are observational controls, not hardware proof of resident weights."]}
     (output / "verification-v2.json").write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n")
     write_v2_report(report, output)
     print(json.dumps({key: report[key] for key in ("metric_verdict", "overall_verdict", "data", "runs", "issues", "comparison")}, indent=2))
@@ -653,7 +675,8 @@ def write_v2_report(report, output):
         f"Changed returned sets: {audit_result['returned_chunk_set_changed_queries']} queries. A changed returned set alone is not a protocol violation.",
         "", "Preflight gate failures:", json.dumps(audit_result['preflight_gate_errors'], ensure_ascii=False, indent=2),
         "", "All numeric errors, source origins and coverage failures are retained in verification-v2.json.",
-        "Automatic checks do not grant final independent acceptance. Serving fingerprints and sentinels are observational controls, not proof of resident weight identity.", ""])
+        f"Final acceptance scope: {report.get('acceptance', {}).get('scope', 'Pending independent review')}.",
+        "Serving fingerprints and sentinels are observational controls, not proof of resident weight identity. No speedup or production acceptance is claimed.", ""])
     (output / "verification-v2.md").write_text("\n".join(lines))
 
 
@@ -780,17 +803,7 @@ def audit(evidence, rows, protocol, queries, read, output):
             "document_rankings_changed": sum(documents[("candidate", route, q)]["document_ids"] != documents[("baseline", route, q)]["document_ids"] for q in query_ids)}
         if route != "psr":
             change_summary[route]["native_hit_sequences_changed"] = sum(raw_native[("candidate", route, q)] != raw_native[("baseline", route, q)] for q in query_ids)
-    proof_checks = {}
-    for run_name in ("baseline", "candidate"):
-        if not (evidence / f"{run_name}-cosine-proof.json").exists():
-            proof_checks[run_name] = {"available": False, "limitation": "No extra non-test cosine probe; main raw responses still audited."}
-            continue
-        proof = read(f"{run_name}-cosine-proof.json")
-        proof_checks[run_name] = {"observations": len(proof["observations"]),
-            "source_matches_commit": proof["file_sha256"] == runtime_files[run_name]["common/doc_store/es_conn_base.py"],
-            "max_error_from_recorded_cosine": max(abs(o["reported"] - o["independent_cosine"]) for o in proof["observations"]),
-            "max_error_from_transformed_recorded_cosine": max(abs(o["reported"] - (1 + o["independent_cosine"]) / 2) for o in proof["observations"]),
-            "limitation": "Stored observations omit original query/chunk vectors and full probe HTTP response; cosine itself cannot be independently recalculated from this file."}
+    proof_checks = {"source": "preflight.json variants.*.non_test_psr_witness; verified by audit_controlled_evidence"}
     preflight_path = evidence / "preflight-verdict.json"
     gate_errors = []
     receipt = {}
@@ -850,6 +863,143 @@ def audit(evidence, rows, protocol, queries, read, output):
         "scope": "Controlled v2 English SciFact document retrieval. No automatic overall approval; returned-set changes alone are not a violation."}
 
 
+def object_differences(before, after, path=""):
+    differences = []
+    if isinstance(before, dict) and isinstance(after, dict):
+        for key in sorted(before.keys() | after.keys()):
+            child = f"{path}.{key}"
+            if key not in before or key not in after:
+                differences.append({"path": child, "reason": "missing field"})
+            else:
+                differences.extend(object_differences(before[key], after[key], child))
+    elif isinstance(before, list) and isinstance(after, list):
+        if len(before) != len(after):
+            differences.append({"path": path, "before_length": len(before), "after_length": len(after)})
+        for index, (left, right) in enumerate(zip(before, after, strict=False)):
+            differences.extend(object_differences(left, right, f"{path}[{index}]"))
+    elif before != after:
+        differences.append({"path": path, "before": before, "after": after})
+    return differences
+
+
+def cosine(left, right):
+    if len(left) != 384 or len(right) != 384 or not all(math.isfinite(v) for v in left + right):
+        raise ValueError("invalid witness vector")
+    denominator = math.sqrt(sum(v * v for v in left) * sum(v * v for v in right))
+    if denominator == 0:
+        raise ValueError("zero witness vector")
+    return sum(a * b for a, b in zip(left, right, strict=True)) / denominator
+
+
+def audit_controlled_evidence(evidence, protocol, queries, query_ids, read):
+    failures, controls, witnesses, witness_scores, run_times = [], {}, {}, {}, {}
+    manifest = read("preflight.json")
+    receipt = read("preflight-verdict.json")
+    mapping = read("chunk-map.json")
+    chunks = {row["chunk_id"]: row["document_id"] for row in mapping["chunks"]}
+    repository = evidence.parents[2]
+    committed_tool = subprocess.check_output(["git", "-C", str(repository), "show", manifest["code_sha"] + ":test/benchmark/beir_verify.py"])
+    if hashlib.sha256(committed_tool).hexdigest() != receipt["tool_sha256"]:
+        failures.append({"reason": "approved preflight tool differs from committed controller tool"})
+    if receipt["verdict"] != "PASS" or receipt["evaluator_id"] != IDENTITY:
+        failures.append({"reason": "missing independent preflight PASS"})
+    if receipt["protocol_sha256"] != sha(evidence / "protocol.json") or receipt["input_manifest_sha256"] != sha(evidence / "preflight.json"):
+        failures.append({"reason": "protocol/preflight bytes changed after approval"})
+    if receipt["controller_code_sha"] != manifest["code_sha"]:
+        failures.append({"reason": "approved controller differs from preflight controller"})
+    approved_at = datetime.datetime.fromisoformat(receipt["approved_at"])
+    test_texts = {queries[query]["text"].strip() for query in query_ids}
+    for name in ("baseline", "candidate"):
+        before = manifest["variants"][name]
+        after = read(f"{name}/controls-after.json")
+        run = read(f"{name}/run.json")
+        runtime_after = read(f"{name}/runtime-after.json")
+        changes = object_differences(before, after, name + ".controls")
+        changes.extend(object_differences(before["runtime"], run["runtime"], name + ".runtime_before"))
+        changes.extend(object_differences(run["runtime"], runtime_after, name + ".runtime_after"))
+        changes.extend(object_differences(before["model_sentinels"], run["model_sentinels"], name + ".model_sentinels"))
+        changes.extend(object_differences(before["vector_values_sha256"], run["vector_values_sha256"], name + ".vector_values"))
+        if run["vector_values_sha256"] != protocol["index_vector_sha256"] or mapping["vector_values_sha256"] != protocol["index_vector_sha256"]:
+            changes.append({"path": name + ".vectors", "reason": "vector fingerprint differs from protocol or saved mapping"})
+        if before["mapping_sha256"] != sha(evidence / "chunk-map.json"):
+            changes.append({"path": name + ".mapping", "reason": "content mapping hash differs"})
+        validate_nlp_states(before["runtime"]["nlp"])
+        changes.extend(object_differences(protocol["nlp"], before["runtime"]["nlp"], name + ".protocol_nlp"))
+        controls[name] = {"exact_before_after_match": not changes, "differences": changes,
+                          "vector_values_sha256": before["vector_values_sha256"], "mapping_sha256": before["mapping_sha256"]}
+        failures.extend(changes)
+        attempts = [load(path) for path in (evidence / name / "raw").rglob("*.attempt.json")]
+        times = [datetime.datetime.fromisoformat(row["started_at"]) for row in attempts]
+        if len(times) != 900 or not times or min(times) <= approved_at:
+            failures.append({"run": name, "reason": "test attempt count or admission timing invalid"})
+        run_times[name] = {"attempt_count": len(times), "first_attempt": min(times).isoformat() if times else None,
+                           "last_attempt": max(times).isoformat() if times else None,
+                           "seconds_after_approval": (min(times) - approved_at).total_seconds() if times else None}
+        witness = before["non_test_psr_witness"]
+        if witness["http_status"] != 200 or witness["business_code"] != 0 or witness["question"] in test_texts:
+            failures.append({"run": name, "reason": "invalid or test-contaminated non-test witness"})
+        if witness["question"] not in protocol["execution"]["warmup"]:
+            failures.append({"run": name, "reason": "witness text differs from frozen non-test set"})
+        query_vector = witness["query_vector"]
+        query_hash = hashlib.sha256(json.dumps(query_vector, separators=(",", ":")).encode()).hexdigest()
+        if query_hash != before["model_sentinels"][witness["question"]]:
+            failures.append({"run": name, "reason": "saved query vector differs from sentinel digest"})
+        witness_scores[name] = {row["id"]: row for row in witness["returned_scores"]}
+        if len(witness_scores[name]) != len(witness["returned_scores"]):
+            failures.append({"run": name, "reason": "duplicate witness chunk IDs"})
+        samples = []
+        for sample in witness["samples"]:
+            value = cosine(query_vector, sample["chunk_vector"])
+            expected = (value + 1) / 2 if name == "baseline" else value
+            observed = sample["reported_vector_similarity"]
+            error = abs(observed - expected)
+            hit = witness_scores[name][sample["chunk_id"]]
+            if error > TOLERANCE or observed != hit["vector_similarity"] or chunks.get(sample["chunk_id"]) != hit["document_id"]:
+                failures.append({"run": name, "reason": "witness cosine/response/mapping mismatch", "chunk": sample["chunk_id"]})
+            samples.append({"chunk_id": sample["chunk_id"], "independent_cosine": value, "observed": observed,
+                            "expected_for_variant": expected, "absolute_error": error})
+        witnesses[name] = {"source": f"preflight.json.variants.{name}.non_test_psr_witness",
+                           "also_identical_in_controls_after": before["non_test_psr_witness"] == after["non_test_psr_witness"],
+                           "samples": samples, "maximum_absolute_error": max((row["absolute_error"] for row in samples), default=None)}
+        if len(samples) != 5:
+            failures.append({"run": name, "reason": "expected five raw-vector witness samples"})
+    common_witness = witness_scores["baseline"].keys() & witness_scores["candidate"].keys()
+    witness_term_error = max((abs(witness_scores["baseline"][key]["term_similarity"] - witness_scores["candidate"][key]["term_similarity"]) for key in common_witness), default=0.0)
+    if len(common_witness) != 64 or witness_term_error > TOLERANCE:
+        failures.append({"reason": "non-test shared term score or coverage mismatch"})
+    shared_count, exact_term_changes, max_term_error, max_vector_error = 0, 0, 0.0, 0.0
+    for path in (evidence / "baseline/raw/psr").glob("*.json"):
+        if path.name.endswith(".attempt.json"):
+            continue
+        left = load(path)
+        right = load(evidence / "candidate/raw/psr" / path.name)
+        left_chunks = {row["id"]: row for page in left["raw"]["pages"] for row in page["response"]["data"]["chunks"]}
+        right_chunks = {row["id"]: row for page in right["raw"]["pages"] for row in page["response"]["data"]["chunks"]}
+        for row in list(left_chunks.values()) + list(right_chunks.values()):
+            if not all(math.isfinite(row[field]) for field in ("term_similarity", "vector_similarity", "similarity")):
+                failures.append({"reason": "nonfinite component score", "query": left["query_id"], "chunk": row["id"]})
+        for key in left_chunks.keys() & right_chunks.keys():
+            shared_count += 1
+            term_error = abs(left_chunks[key]["term_similarity"] - right_chunks[key]["term_similarity"])
+            vector_error = abs(2 * left_chunks[key]["vector_similarity"] - 1 - right_chunks[key]["vector_similarity"])
+            exact_term_changes += term_error != 0
+            max_term_error, max_vector_error = max(max_term_error, term_error), max(max_vector_error, vector_error)
+    if max_term_error > TOLERANCE or max_vector_error > TOLERANCE:
+        failures.append({"reason": "shared test component scores do not isolate the intended transformation"})
+    model_service = read("model-service-observation.json")
+    for filename, field in {"model.onnx": "model_onnx_sha256", "tokenizer.json": "tokenizer_json_sha256",
+                            "tokenizer_config.json": "tokenizer_config_sha256", "config.json": "config_sha256"}.items():
+        if model_service["file_sha256"][filename] != protocol["model"][field]:
+            failures.append({"reason": "model file digest differs from protocol", "file": filename})
+    return {"failures": failures, "controls": controls, "non_test_witness": witnesses,
+            "non_test_shared_chunks": len(common_witness), "non_test_term_max_absolute_error": witness_term_error,
+            "shared_test_chunks": shared_count, "exact_nonzero_shared_term_changes": exact_term_changes,
+            "shared_term_max_absolute_error": max_term_error, "shared_vector_transform_max_absolute_error": max_vector_error,
+            "approved_at": receipt["approved_at"], "attempt_timing": run_times,
+            "preflight_tool_sha256": receipt["tool_sha256"], "preflight_receipt_sha256": sha(evidence / "preflight-verdict.json"),
+            "model_identity_boundary": "File hashes and unchanged pre/post sentinels verify recorded observational controls, not hardware-resident weights."}
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--self-test", action="store_true")
@@ -867,4 +1017,5 @@ if __name__ == "__main__":
             preflight(args.evidence, args.output, args.preflight_manifest)
         else:
             verify(args.evidence, args.output)
+
 
