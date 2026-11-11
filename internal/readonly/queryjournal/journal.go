@@ -20,14 +20,15 @@ import (
 )
 
 var (
-	ErrInvalid     = errors.New("query journal: invalid input")
-	ErrUnavailable = errors.New("query journal: store unavailable or invalid")
-	ErrBusy        = errors.New("query journal: capacity exhausted")
-	ErrDuplicate   = errors.New("query journal: execution already recorded")
-	ErrNotFound    = errors.New("query journal: execution not found")
-	ErrConflict    = errors.New("query journal: state changed or binding mismatch")
-	ErrUnconfirmed = errors.New("query journal: terminal cleanup unconfirmed")
-	ErrJournalFull = errors.New("query journal: retained record limit reached")
+	ErrInvalid            = errors.New("query journal: invalid input")
+	ErrUnavailable        = errors.New("query journal: store unavailable or invalid")
+	ErrBusy               = errors.New("query journal: capacity exhausted")
+	ErrDuplicate          = errors.New("query journal: execution already recorded")
+	ErrNotFound           = errors.New("query journal: execution not found")
+	ErrConflict           = errors.New("query journal: state changed or binding mismatch")
+	ErrUnconfirmed        = errors.New("query journal: terminal cleanup unconfirmed")
+	ErrJournalFull        = errors.New("query journal: retained record limit reached")
+	ErrAdmissionUncertain = errors.New("query journal: admission expired; stored reservation may remain")
 )
 
 // Scope is fixed by trusted service configuration, never by an HTTP/model input.
@@ -210,6 +211,9 @@ func (m *Manager) Reserve(ctx context.Context, b Binding, deadline time.Time) (R
 	if !validBinding(b) || deadline.IsZero() || !deadline.After(time.Now()) || deadline.UnixMilli() > maxExactInteger {
 		return Record{}, ErrInvalid
 	}
+	if ctx.Err() != nil {
+		return Record{}, ErrAdmissionUncertain
+	}
 	now := time.Now().UnixMilli()
 	r := Record{Binding: b, Scope: m.scope, DeadlineMS: deadline.UnixMilli(), Phase: Reserved, Version: 1, CreatedMS: now, UpdatedMS: now}
 	r.Slot = 1
@@ -236,7 +240,16 @@ func (m *Manager) Reserve(ctx context.Context, b Binding, deadline time.Time) (R
 		if !ok {
 			return Record{}, ErrUnavailable
 		}
-		return m.decode(stored, b.ExecutionID)
+		r, err := m.decode(stored, b.ExecutionID)
+		if err != nil {
+			return Record{}, err
+		}
+		// Native pools may finish socket I/O after request cancellation. Reject
+		// late authorization but retain any atomically written unknown slot.
+		if ctx.Err() != nil || !time.Now().Before(deadline) {
+			return Record{}, ErrAdmissionUncertain
+		}
+		return r, nil
 	default:
 		return Record{}, ErrUnavailable
 	}
@@ -244,10 +257,41 @@ func (m *Manager) Reserve(ctx context.Context, b Binding, deadline time.Time) (R
 
 func (m *Manager) decode(raw, id string) (Record, error) {
 	var r Record
-	if json.Unmarshal([]byte(raw), &r) != nil || !validBinding(r.Binding) || r.Binding.ExecutionID != id || r.Scope != m.scope || r.Version == 0 || r.Slot < 1 || r.Slot > 2 || r.DeadlineMS <= 0 {
+	if json.Unmarshal([]byte(raw), &r) != nil || !validBinding(r.Binding) || r.Binding.ExecutionID != id || r.Scope != m.scope || !validRecord(r) {
 		return Record{}, ErrUnavailable
 	}
 	return r, nil
+}
+
+func knownOutcome(outcome Outcome) bool {
+	return outcome == Succeeded || outcome == Failed || outcome == Cancelled || outcome == TimedOut
+}
+func validRecord(r Record) bool {
+	if r.Version == 0 || r.Version > maxExactInteger || r.Slot < 1 || r.Slot > 2 ||
+		r.DeadlineMS <= 0 || r.DeadlineMS > maxExactInteger || r.CreatedMS <= 0 || r.CreatedMS > maxExactInteger ||
+		r.UpdatedMS <= 0 || r.UpdatedMS > maxExactInteger ||
+		(r.BackendLocator != "" && !safeID.MatchString(r.BackendLocator)) ||
+		(r.EvidenceRef != "" && !safeID.MatchString(r.EvidenceRef)) {
+		return false
+	}
+	if r.Released {
+		return r.Phase == Terminal && r.Cleanup == CleanupConfirmed && knownOutcome(r.Outcome) &&
+			r.BackendLocator != "" && r.EvidenceRef != "" &&
+			(r.Completeness == CompletenessUnknown || r.Completeness == Complete || r.Completeness == Truncated)
+	}
+	if r.Outcome != OutcomeUnknown || r.Completeness != CompletenessUnknown || r.Cleanup != CleanupUnknown || r.EvidenceRef != "" {
+		return false
+	}
+	switch r.Phase {
+	case Reserved:
+		return r.BackendLocator == ""
+	case Running:
+		return r.BackendLocator != ""
+	case Unknown:
+		return true
+	default:
+		return false
+	}
 }
 func (m *Manager) load(ctx context.Context, id string) (Record, string, error) {
 	if !safeID.MatchString(id) {
@@ -375,7 +419,7 @@ func (m *Manager) Reconcile(ctx context.Context, id string) (Record, error) {
 		}
 		return updated, ErrUnconfirmed
 	}
-	if !safeID.MatchString(o.EvidenceRef) || (o.Outcome != Succeeded && o.Outcome != Failed && o.Outcome != Cancelled && o.Outcome != TimedOut) || (o.Completeness != CompletenessUnknown && o.Completeness != Complete && o.Completeness != Truncated) {
+	if !safeID.MatchString(o.EvidenceRef) || !knownOutcome(o.Outcome) || (o.Completeness != CompletenessUnknown && o.Completeness != Complete && o.Completeness != Truncated) {
 		return r, ErrUnconfirmed
 	}
 	next := r

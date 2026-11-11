@@ -517,7 +517,7 @@ func TestAdmissionAcrossIndependentProcesses(t *testing.T) {
 		t.Fatalf("two processes admitted=%d busy=%d", a1+a2, b1+b2)
 	}
 	// Both admitting processes have exited. A fresh process must still see busy,
-	// even after the synthetic service clock advances beyond all record deadlines.
+	// even after the synthetic service clock advances beyond a hypothetical TTL.
 	s.FastForward(24 * time.Hour)
 	output, err := makeCommand("process_restarted").CombinedOutput()
 	if err != nil {
@@ -565,6 +565,7 @@ func TestAdmissionExpiryAfterStoreWriteRetainsUnknownSlot(t *testing.T) {
 			if err == nil {
 				t.Error("expired admission returned execution authorization")
 			}
+			wantErr(t, err, ErrAdmissionUncertain)
 			if err != nil && r.Binding.ExecutionID != "" {
 				t.Error("uncertain admission returned an execution record")
 			}
