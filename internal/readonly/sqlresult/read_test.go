@@ -25,6 +25,10 @@ type fixture struct {
 	onQuery, onNext, onClose                       func()
 	queryCount, nextCount, closeCount, columnCount atomic.Int32
 	scanMismatch                                   bool
+	metadataMismatch                               bool
+	receivedStatement                              string
+	receivedArgs                                   []driver.NamedValue
+	receivedContext                                context.Context
 	moreSets                                       bool
 	position                                       int
 	reuse                                          []byte
@@ -44,8 +48,10 @@ type conn struct{ f *fixture }
 func (*conn) Prepare(string) (driver.Stmt, error) { return nil, errors.New("unexpected prepare") }
 func (*conn) Begin() (driver.Tx, error)           { return nil, errors.New("unexpected transaction") }
 func (*conn) Close() error                        { return nil }
-func (c *conn) QueryContext(context.Context, string, []driver.NamedValue) (driver.Rows, error) {
+func (c *conn) QueryContext(ctx context.Context, statement string, args []driver.NamedValue) (driver.Rows, error) {
 	c.f.queryCount.Add(1)
+	c.f.receivedStatement, c.f.receivedContext = statement, ctx
+	c.f.receivedArgs = append([]driver.NamedValue(nil), args...)
 	if c.f.onQuery != nil {
 		c.f.onQuery()
 	}
@@ -59,7 +65,7 @@ type syntheticRows struct{ f *fixture }
 
 func (r *syntheticRows) Columns() []string {
 	n := r.f.columnCount.Add(1)
-	if r.f.scanMismatch && n >= 3 {
+	if (r.f.scanMismatch && n >= 3) || (r.f.metadataMismatch && n >= 2) {
 		return []string{"x", "extra"}
 	}
 	return r.f.columns
@@ -223,6 +229,7 @@ func TestErrorsNeverClaimComplete(t *testing.T) {
 	}{
 		{"query", &fixture{queryErr: canary}, limits(), ErrQuery},
 		{"zero columns", &fixture{}, limits(), ErrMetadata},
+		{"metadata mismatch", &fixture{columns: []string{"x"}, metadataMismatch: true}, limits(), ErrMetadata},
 		{"next", &fixture{columns: []string{"x"}, nextErr: canary}, limits(), ErrRows},
 		{"scan", &fixture{columns: []string{"x"}, values: [][]driver.Value{{int64(1)}}, scanMismatch: true}, limits(), ErrScan},
 		{"EOF close", &fixture{columns: []string{"x"}, closeErr: canary}, limits(), ErrRows},
@@ -262,6 +269,18 @@ func TestReadInvalidLimitsStillOwnsClose(t *testing.T) {
 	_, err = Query(t.Context(), database(t, f), "synthetic", nil, Limits{})
 	if err != ErrLimits || f.queryCount.Load() != 1 {
 		t.Fatal("invalid query touched database")
+	}
+}
+
+func TestQueryPassesCallerContextStatementAndArgumentsOnce(t *testing.T) {
+	f := &fixture{columns: []string{"x"}}
+	ctx := t.Context()
+	r, err := Query(ctx, database(t, f), "SELECT exact($1, $2)", []any{int64(42), "binding"}, limits())
+	if err != nil || r.Completeness != Complete || f.queryCount.Load() != 1 {
+		t.Fatal("single query failed")
+	}
+	if f.receivedContext != ctx || f.receivedStatement != "SELECT exact($1, $2)" || len(f.receivedArgs) != 2 || f.receivedArgs[0].Value != int64(42) || f.receivedArgs[1].Value != "binding" {
+		t.Fatal("query context, text or arguments changed")
 	}
 }
 

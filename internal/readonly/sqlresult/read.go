@@ -73,7 +73,7 @@ func read(ctx context.Context, rows *sql.Rows, options readOptions) (result Read
 			return result, ErrMetadata
 		}
 		types, typesErr := rows.ColumnTypes()
-		if typesErr != nil {
+		if typesErr != nil || len(types) != len(names) {
 			return result, ErrMetadata
 		}
 		for i, typ := range types {
