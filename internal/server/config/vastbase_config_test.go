@@ -189,6 +189,15 @@ func TestParseDatabaseConfigAcceptsVastbaseType(t *testing.T) {
 	}
 }
 
+func TestParseDatabaseConfigRejectsStandardPostgreSQL(t *testing.T) {
+	t.Setenv("DB_TYPE", "postgres")
+	v := viper.New()
+	c := &Config{}
+	if err := c.ParseDatabaseConfig(v); err == nil || !strings.Contains(err.Error(), "database type postgres is not supported") {
+		t.Fatalf("ParseDatabaseConfig(postgres) error = %v, want unsupported database type", err)
+	}
+}
+
 // TestParseVastbaseDatabaseConfigEnvironmentOnly mirrors the doc-engine env
 // test: the metadata keys must be readable from RAGFLOW_VASTBASE_* variables
 // through the parent viper's AutomaticEnv.
