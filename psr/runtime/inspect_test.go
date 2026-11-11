@@ -138,6 +138,7 @@ func TestCopyOnlyLockedDependencies(t *testing.T) {
 	payload := []byte("public resource")
 	os.WriteFile(filepath.Join(root, "nested", "known"), payload, 0600)
 	os.WriteFile(filepath.Join(root, "unlisted-private-file"), []byte("synthetic extra file"), 0600)
+	os.Symlink("/root/ragflow-native-libs/office_oxide/lib/liboffice_oxide.a", filepath.Join(root, "generated-native-version-link"))
 	manifest := filepath.Join(t.TempDir(), "checksums")
 	os.WriteFile(manifest, []byte(fmt.Sprintf("%x  ./nested/known\n", sha256.Sum256(payload))), 0600)
 	if err := runCopy(t, root, manifest, dst); err != nil {
@@ -149,6 +150,9 @@ func TestCopyOnlyLockedDependencies(t *testing.T) {
 	}
 	if _, err = os.Stat(filepath.Join(dst, "unlisted-private-file")); !os.IsNotExist(err) {
 		t.Fatal("unlisted input escaped into artifact")
+	}
+	if _, err = os.Lstat(filepath.Join(dst, "generated-native-version-link")); !os.IsNotExist(err) {
+		t.Fatal("generated absolute native link escaped into archived dependencies")
 	}
 }
 func TestRejectEscapingDependencyPath(t *testing.T) {

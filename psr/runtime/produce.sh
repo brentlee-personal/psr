@@ -186,6 +186,6 @@ jq -n --arg source "$SOURCE" --arg producer "$PRODUCER" --arg binary "$BINARY_SH
 cp --reflink=auto "$BASE_ARCHIVE" "$OUT/dependencies/production-base.image.tar"
 cp "$LOCK" "$RECIPE"/{resources.sha256,native.sha256,dictionary.sha256,base-packages.tsv} "$OUT/dependencies/"
 cp --reflink=auto -a "$OUT/work/resources" "$OUT/dependencies/runtime-resources"
-cp --reflink=auto -a "$OUT/work/native" "$OUT/dependencies/native-libs"
+copy_locked_files "$OUT/work/native" "$RECIPE/native.sha256" "$OUT/dependencies/native-libs"
 printf 'state=PRODUCED application_source=%s producer_source=%s\n' "$SOURCE" "$PRODUCER" > "$OUT/RESULT"
 cat "$OUT/payload/source-manifest.json"
