@@ -27,10 +27,17 @@ var ErrUserTokenUnverified = errors.New("native user identity unverified")
 // userTokenSource reuses the native token parser, DAO and edition resolver.
 // Applications cannot replace its native signing or identity authorities.
 type userTokenSource struct {
-	db     func() *gorm.DB
-	secret func(context.Context) (string, error)
-	tenant func(context.Context, *entity.User, string) (string, error)
+	requireObserver bool
+	observe         func(context.Context, *gorm.DB, *common.AccessTokenContext) (*AuthIdentity, error)
+	db              func() *gorm.DB
+	secret          func(context.Context) (string, error)
+	tenant          func(context.Context, *entity.User, string) (string, error)
 }
+
+// nativeUserIdentityObserver is wired only by the compiled CE implementation.
+// Its nil default leaves the existing downstream EE authority path unchanged.
+var nativeUserIdentityIsCE bool
+var nativeUserIdentityObserver func(context.Context, *gorm.DB, *common.AccessTokenContext) (*AuthIdentity, error)
 
 type signingKeyReader struct{ client *kvrocks.Client }
 
@@ -40,7 +47,9 @@ func (r signingKeyReader) Get(ctx context.Context, key string) (string, error) {
 
 func newUserTokenSource() userTokenSource {
 	return userTokenSource{
-		db: func() *gorm.DB { return dao.DB },
+		requireObserver: nativeUserIdentityIsCE,
+		observe:         nativeUserIdentityObserver,
+		db:              func() *gorm.DB { return dao.DB },
 		secret: func(ctx context.Context) (string, error) {
 			var store server.SigningKeyReader
 			if client := kvrocks.Get(); client != nil {
@@ -70,6 +79,13 @@ func (s userTokenSource) resolve(ctx context.Context, authorization string) (*Au
 	}
 	// A failed token lookup must never log the access_token SQL predicate.
 	db = db.Session(&gorm.Session{Logger: logger.Discard})
+	if s.requireObserver && s.observe == nil {
+		return nil, nil, ErrUserTokenUnverified
+	}
+	if s.observe != nil {
+		identity, err := s.observe(ctx, db, token)
+		return identity, token, err
+	}
 	user, err := dao.NewUserDAO().GetByAccessToken(ctx, db, token.AccessToken)
 	if err != nil {
 		return nil, nil, userTokenStateError(err)
@@ -120,8 +136,8 @@ func (i VerifiedUserIdentity) MarshalJSON() ([]byte, error) {
 }
 func (i *VerifiedUserIdentity) UnmarshalJSON([]byte) error { return ErrUserTokenDenied }
 
-// UserTokenVerifier uses the same signature, current-token DAO, and edition
-// tenant resolver as the native user authentication path.
+// UserTokenVerifier uses native signatures and current native identity state.
+// CE observes its User and tenant relations together; EE retains its edition path.
 type UserTokenVerifier struct{ source userTokenSource }
 
 func NewUserTokenVerifier() *UserTokenVerifier {
@@ -149,20 +165,26 @@ func (v *UserTokenVerifier) VerifyUserToken(ctx context.Context, authorization s
 	if !now.Before(expiry) {
 		return VerifiedUserIdentity{}, ErrUserTokenDenied
 	}
-	if err := v.checkIdentityState(ctx, identity); err != nil {
-		return VerifiedUserIdentity{}, err
-	}
-	// Reject known invalid native account/member state before the edition hook:
-	// downstream hooks may report such denials with opaque errors.
-	tenantID, err := v.source.tenant(ctx, identity.User, token.TenantID)
-	if err != nil {
-		return VerifiedUserIdentity{}, userTokenStateError(err)
-	}
-	if tenantID == "" {
-		return VerifiedUserIdentity{}, ErrUserTokenUnverified
-	}
-	if tenantID != token.TenantID {
-		return VerifiedUserIdentity{}, ErrUserTokenDenied
+	if v.source.observe != nil {
+		if identity == nil || identity.User == nil || identity.User.ID == "" || identity.TenantID == "" {
+			return VerifiedUserIdentity{}, ErrUserTokenUnverified
+		}
+	} else {
+		if err := v.checkIdentityState(ctx, identity); err != nil {
+			return VerifiedUserIdentity{}, err
+		}
+		// Reject known invalid native account/member state before the edition hook:
+		// downstream hooks may report such denials with opaque errors.
+		tenantID, err := v.source.tenant(ctx, identity.User, token.TenantID)
+		if err != nil {
+			return VerifiedUserIdentity{}, userTokenStateError(err)
+		}
+		if tenantID == "" {
+			return VerifiedUserIdentity{}, ErrUserTokenUnverified
+		}
+		if tenantID != token.TenantID {
+			return VerifiedUserIdentity{}, ErrUserTokenDenied
+		}
 	}
 
 	// Authority reads may block past the deadline or ignore cancellation. Only
