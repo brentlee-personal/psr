@@ -23,8 +23,8 @@
     {
       "name": "minio",
       "repository": "pgsty/silo",
-      "upstream_tag": "RELEASE.2026-08-06T00-00-00Z",
-      "upstream_manifest_digest": "sha256:da1284931914c3de5fc8e8ad0c43b88e4eb930d20064b36867daba4dfd546a00"
+      "upstream_tag": "RELEASE.2026-11-09T00-00-00Z",
+      "upstream_manifest_digest": "sha256:47271709b91be7f607a26dfa6485be4921c07b5d277d0adea65f37e1919ad5e9"
     }
   ]
 }

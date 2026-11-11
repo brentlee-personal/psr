@@ -31,7 +31,7 @@ var approved = []imageSpec{
 	{Name: "kvrocks", Repository: "apache/kvrocks", Tag: "2.16.0"},
 	{Name: "nats", Repository: "library/nats", Tag: "2.14.2"},
 	{Name: "infinity", Repository: "infiniflow/infinity", Tag: "v0.7.5-x64-v3"},
-	{Name: "minio", Repository: "pgsty/silo", Tag: "RELEASE.2026-08-06T00-00-00Z"},
+	{Name: "minio", Repository: "pgsty/silo", Tag: "RELEASE.2026-11-09T00-00-00Z"},
 }
 
 type descriptor struct {

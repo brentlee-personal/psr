@@ -168,3 +168,31 @@ func TestTransportErrorsDoNotExposeSignedURLs(t *testing.T) {
 		t.Fatal("transport error leaked request URL or lost failure")
 	}
 }
+
+func TestLockedSiloCandidateInputs(t *testing.T) {
+	b, err := os.ReadFile("inputs.lock.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var lock inputLock
+	if err := json.Unmarshal(b, &lock); err != nil {
+		t.Fatal(err)
+	}
+	if err := validateLock(lock); err != nil {
+		t.Fatal(err)
+	}
+	for i, image := range lock.Images {
+		if image.Name != "minio" {
+			continue
+		}
+		if image.Repository != "pgsty/silo" || image.Tag != "RELEASE.2026-11-09T00-00-00Z" || image.Digest != "sha256:47271709b91be7f607a26dfa6485be4921c07b5d277d0adea65f37e1919ad5e9" {
+			t.Fatalf("unexpected locked Silo candidate: %+v", image)
+		}
+		lock.Images[i].Tag = "RELEASE.2026-08-06T00-00-00Z"
+		if err := validateLock(lock); err == nil {
+			t.Fatal("accepted old Silo tag with candidate digest")
+		}
+		return
+	}
+	t.Fatal("locked Silo candidate missing")
+}
