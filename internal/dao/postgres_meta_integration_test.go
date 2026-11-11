@@ -205,6 +205,46 @@ func TestPostgreSQLMetadataIntegration(t *testing.T) {
 			t.Fatal("limited deletion count did not match")
 		}
 	})
+	t.Run("canvas_title_casefold_constraint_and_concurrency", func(t *testing.T) {
+		insert := func(id, user, category, title string) error {
+			return db.WithContext(ctx).Create(&entity.UserCanvas{ID: id, UserID: user, CanvasCategory: category, Title: &title, DSL: entity.JSONMap{}}).Error
+		}
+		if err := insert("pg-title-one", "pg-title-owner", "agent_canvas", "Retail"); err != nil {
+			t.Fatal(err)
+		}
+		if err := insert("pg-title-two", "pg-title-owner", "agent_canvas", "retail"); !errors.Is(err, gorm.ErrDuplicatedKey) {
+			t.Fatalf("casefold title duplicate was not rejected: %v", err)
+		}
+		if err := insert("pg-title-other-owner", "pg-title-other", "agent_canvas", "retail"); err != nil {
+			t.Fatal("casefold index widened across owners")
+		}
+		if err := insert("pg-title-other-category", "pg-title-owner", "another_category", "retail"); err != nil {
+			t.Fatal("casefold index widened across categories")
+		}
+		results := make(chan error, 2)
+		start := make(chan struct{})
+		for i, title := range []string{"Concurrent", "concurrent"} {
+			go func(i int, title string) {
+				<-start
+				results <- insert(fmt.Sprintf("pg-title-race-%d", i), "pg-title-race-owner", "agent_canvas", title)
+			}(i, title)
+		}
+		close(start)
+		passed, duplicate := 0, 0
+		for i := 0; i < 2; i++ {
+			err := <-results
+			if err == nil {
+				passed++
+			} else if errors.Is(err, gorm.ErrDuplicatedKey) {
+				duplicate++
+			} else {
+				t.Fatal(err)
+			}
+		}
+		if passed != 1 || duplicate != 1 {
+			t.Fatalf("concurrent casefold constraint: passed=%d duplicate=%d", passed, duplicate)
+		}
+	})
 	t.Run("native_json_legacy_normalization_preserves_content", func(t *testing.T) {
 		status := "1"
 		original := entity.JSONMap{"unchanged": "value", "nested": map[string]interface{}{"count": float64(7)}}

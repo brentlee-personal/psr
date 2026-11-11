@@ -162,22 +162,10 @@ func postgresKnowledgebaseNameUnique(ctx context.Context, db *gorm.DB) error {
  GENERATED ALWAYS AS (CASE WHEN status = '1' THEN lower(name) ELSE NULL END) STORED`).Error; err != nil {
 		return err
 	}
-	var column struct {
-		IsGenerated            string
-		GenerationExpression   string
-		DataType               string
-		CharacterMaximumLength int
-	}
-	if err := db.WithContext(ctx).Raw(`SELECT is_generated,generation_expression,data_type,character_maximum_length
- FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='knowledgebase' AND column_name='name_ci'`).Scan(&column).Error; err != nil {
+	if err := validatePostgreSQLGeneratedTextColumn(ctx, db, "knowledgebase", "name_ci", 128, "casewhenstatus='1'thenlowernameelsenullend"); err != nil {
 		return err
 	}
-	expression := strings.ToLower(column.GenerationExpression)
-	expression = strings.ReplaceAll(expression, "::text", "")
-	expression = regexp.MustCompile(`[\s()]`).ReplaceAllString(expression, "")
-	if column.IsGenerated != "ALWAYS" || column.DataType != "character varying" || column.CharacterMaximumLength != 128 || expression != "casewhenstatus='1'thenlowernameelsenullend" {
-		return fmt.Errorf("PostgreSQL knowledgebase.name_ci has an incompatible generated column definition")
-	}
+
 	return addUniqueIndex(ctx, db, "knowledgebase", "idx_kb_tenant_name_ci", []string{"tenant_id", "name_ci"})
 }
 
@@ -214,4 +202,35 @@ func ensurePostgreSQLMetadataConstraints(ctx context.Context, db *gorm.DB) error
 		}
 	}
 	return nil
+}
+
+func validatePostgreSQLGeneratedTextColumn(ctx context.Context, db *gorm.DB, table, columnName string, width int, expectedExpression string) error {
+	var column struct {
+		IsGenerated            string
+		GenerationExpression   string
+		DataType               string
+		CharacterMaximumLength int
+	}
+	if err := db.WithContext(ctx).Raw(`SELECT is_generated,generation_expression,data_type,character_maximum_length
+ FROM information_schema.columns WHERE table_schema=current_schema() AND table_name=? AND column_name=?`, table, columnName).Scan(&column).Error; err != nil {
+		return err
+	}
+	expression := strings.ToLower(column.GenerationExpression)
+	expression = strings.ReplaceAll(expression, "::text", "")
+	expression = regexp.MustCompile(`[\s()]`).ReplaceAllString(expression, "")
+	if column.IsGenerated != "ALWAYS" || column.DataType != "character varying" || column.CharacterMaximumLength != width || expression != expectedExpression {
+		return fmt.Errorf("PostgreSQL %s.%s has an incompatible generated column definition", table, columnName)
+	}
+	return nil
+}
+
+func postgresUserCanvasTitleUnique(ctx context.Context, db *gorm.DB) error {
+	if err := db.WithContext(ctx).Exec(`ALTER TABLE user_canvas ADD COLUMN IF NOT EXISTS title_ci varchar(255)
+ GENERATED ALWAYS AS (lower(title)) STORED`).Error; err != nil {
+		return err
+	}
+	if err := validatePostgreSQLGeneratedTextColumn(ctx, db, "user_canvas", "title_ci", 255, "lowertitle"); err != nil {
+		return err
+	}
+	return addUniqueIndex(ctx, db, "user_canvas", "idx_user_canvas_user_category_title", []string{"user_id", "canvas_category", "title_ci"})
 }

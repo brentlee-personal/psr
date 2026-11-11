@@ -664,7 +664,7 @@ func migrateUserCanvasTitleUnique(ctx context.Context, db *gorm.DB) error {
 		if !db.WithContext(ctx).Migrator().HasTable("user_canvas") {
 			return nil
 		}
-		return addUniqueIndex(ctx, db, "user_canvas", "idx_user_canvas_user_category_title", []string{"user_id", "canvas_category", "title"})
+		return postgresUserCanvasTitleUnique(ctx, db)
 	}
 
 	if !db.WithContext(ctx).Migrator().HasTable("user_canvas") {
