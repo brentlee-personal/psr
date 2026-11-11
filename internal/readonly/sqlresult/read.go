@@ -83,6 +83,9 @@ func read(ctx context.Context, rows *sql.Rows, options readOptions) (result Read
 			return result, err
 		}
 		if err = measure(&result, options.limits.MaxBytes); err != nil {
+			// Do not retain oversized schema metadata in an error result.
+			result.Columns = nil
+			result.Rows = nil
 			return result, err
 		}
 	}
@@ -138,6 +141,8 @@ func read(ctx context.Context, rows *sql.Rows, options readOptions) (result Read
 		result.Rows = append(result.Rows, raw)
 		if !options.legacy {
 			if err = measure(&result, options.limits.MaxBytes); err != nil {
+				// Clear the backing array reference before shortening the slice.
+				result.Rows[len(result.Rows)-1] = nil
 				result.Rows = result.Rows[:len(result.Rows)-1]
 				return result, err
 			}

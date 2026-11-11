@@ -197,6 +197,9 @@ func TestPayloadByteBoundaryIncludesColumnsAndJSON(t *testing.T) {
 				if err != ErrByteLimit || got.Completeness != Exceeded || len(got.Rows) != 0 {
 					t.Fatal("oversize accepted")
 				}
+				if cap(got.Rows) > 0 && got.Rows[:cap(got.Rows)][0] != nil {
+					t.Fatal("oversized row retained in backing array")
+				}
 			} else if err != nil || got.Completeness != Complete {
 				t.Fatal("exact/smaller payload rejected")
 			}
@@ -204,7 +207,7 @@ func TestPayloadByteBoundaryIncludesColumnsAndJSON(t *testing.T) {
 	}
 	t.Run("metadata alone", func(t *testing.T) {
 		r, err := run(t, &fixture{columns: []string{strings.Repeat("x", 100)}}, Limits{100, 10})
-		if err != ErrByteLimit || r.Completeness != Exceeded {
+		if err != ErrByteLimit || r.Completeness != Exceeded || r.Columns != nil {
 			t.Fatal("metadata not bounded")
 		}
 	})
