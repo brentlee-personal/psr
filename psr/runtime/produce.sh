@@ -19,6 +19,7 @@ SOURCE=$(jq -er '.application_source_sha' "$LOCK")
 [[ $(df -PB1 "$(dirname "$OUT")" | awk 'NR==2 {print $4}') -gt 21474836480 ]] || { echo 'output volume free space below 20GiB' >&2; exit 1; }
 mkdir -p "$OUT"/{payload,work,logs,dependencies}
 exec > >(tee "$OUT/logs/producer.log") 2>&1
+trap 'rc=$?; if ((rc)); then printf "state=FAILED exit=%s producer_source=%s application_source=%s\n" "$rc" "$PRODUCER" "$SOURCE" > "$OUT/RESULT"; fi' EXIT
 printf 'producer_source=%s application_source=%s started=%s\n' "$PRODUCER" "$SOURCE" "$(date -Is)"
 RUNNER=$(jq -er '.runner' "$LOCK")
 [[ $(sha256sum "$APP/Dockerfile" | cut -d' ' -f1) == $(jq -er '.dockerfile_sha256' "$LOCK") ]]
@@ -94,14 +95,14 @@ export BUILDX_METADATA_PROVENANCE=disabled
  --label "org.opencontainers.image.revision=$SOURCE" \
  --label "io.psr.producer.revision=$PRODUCER" \
  --output "type=oci,dest=$OUT/payload/core-runtime.oci.tar" \
- --metadata-file "$OUT/logs/buildx-metadata.json" --tag "$RUN_TAG" --file "$APP/Dockerfile" "$APP" \
+ --metadata-file "$OUT/logs/buildx-metadata.json" --tag "$RUN_TAG" --file "$APP/Dockerfile" "$APP" 2>&1 \
  | tee "$OUT/logs/assemble.log"
 mkdir "$OUT/work/oci"
 tar --no-same-owner -xf "$OUT/payload/core-runtime.oci.tar" -C "$OUT/work/oci"
 # Standalone stdlib inspector is a packaging tool, not a backend build.
 "${DOCKER[@]}" run --rm --runtime=runc --user 0:0 --env HOME=/root --read-only \
  --cpus=1 --memory=1g --pids-limit=128 --network=none --env GOTOOLCHAIN=local \
- --env GOCACHE=/tmp/gocache --tmpfs /tmp:size=512m \
+ --env GOCACHE=/tmp/gocache --tmpfs /tmp:rw,exec,nosuid,nodev,size=512m \
  --mount "type=bind,src=$CONTROL,dst=/control,readonly" \
  --mount "type=bind,src=$OUT/work/oci,dst=/oci,readonly" \
  --workdir /control --entrypoint /bin/bash "$RUNNER" -ec \

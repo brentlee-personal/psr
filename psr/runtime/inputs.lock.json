@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "application_source_sha": "69b1bbfe0f7e8b6af77ab1aaa9182fb2366cccdb",
+  "application_source_sha": "79e4eb32e386a453b71bfe5ec504861d3cff332c",
   "platform": "linux/amd64",
   "runner": "infiniflow/github_action_runner@sha256:1ac3980a915be9dc9cb51e97dac1864e2d1690dc426b1149d94e2b5edf5157e7",
   "dockerfile_sha256": "7471eb00931030e3c1d9b708a2c76d20468cfa8bff2c561e2f79baf1bd15d762",

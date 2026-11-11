@@ -91,6 +91,18 @@ jobs:
           bash control/psr/runtime/produce.sh "$GITHUB_WORKSPACE/application" \
             "$RUNNER_TEMP/psr-runtime-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
             "$REVIEWED_CACHE" "$GITHUB_SHA"
+      - name: Persist GPU build evidence
+        if: always()
+        shell: bash
+        run: |
+          output="$RUNNER_TEMP/psr-runtime-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          receipt="/data/brent/workspace/go-core-oci-producer-evidence-20261111/runs/$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          mkdir -p "$receipt/logs"
+          if [[ -d "$output/logs" ]]; then cp -a "$output/logs/." "$receipt/logs/"; fi
+          if [[ -f "$output/RESULT" ]]; then cp "$output/RESULT" "$receipt/RESULT"; fi
+          for manifest in source-manifest.json runtime-resources.json; do
+            if [[ -f "$output/payload/$manifest" ]]; then cp "$output/payload/$manifest" "$receipt/$manifest"; fi
+          done
       - name: Upload complete runtime payload
         id: runtime
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
