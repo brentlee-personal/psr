@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -178,4 +179,59 @@ func TestAnalyzeExactSQLBinding(t *testing.T) {
 	if a.SQLSHA256 == b.SQLSHA256 {
 		t.Fatal("SQL byte change did not change digest")
 	}
+}
+
+func TestAnalyzeIncompleteNamespaceCannotResolveUnqualified(t *testing.T) {
+	cases := map[string]string{
+		"outer_fallthrough":    "SELECT (SELECT amount FROM synthetic.subset s LIMIT 1) AS leaked FROM synthetic.visible v",
+		"same_level_ambiguity": "SELECT amount FROM synthetic.visible v, synthetic.subset s",
+	}
+	for name, sql := range cases {
+		t.Run(name, func(t *testing.T) {
+			got, err := Analyze(context.Background(), sql, fixturePolicy())
+			if !errors.Is(err, ErrRejected) || !reflect.DeepEqual(got, Analysis{}) {
+				t.Fatalf("incomplete namespace must reject, got %+v, %v", got, err)
+			}
+		})
+	}
+}
+
+func TestAnalyzeEmbeddedNULRejected(t *testing.T) {
+	for name, sql := range map[string]string{
+		"hidden_suffix": "SELECT 1\x00; DELETE FROM synthetic.visible",
+		"trailing_nul":  "SELECT 1\x00",
+		"literal_nul":   "SELECT 'a\x00b' AS value",
+	} {
+		t.Run(name, func(t *testing.T) {
+			got, err := Analyze(context.Background(), sql, fixturePolicy())
+			if !errors.Is(err, ErrRejected) || !reflect.DeepEqual(got, Analysis{}) {
+				t.Fatalf("NUL bytes must reject, got %+v, %v", got, err)
+			}
+		})
+	}
+}
+
+func TestAnalyzeWildcardBudget(t *testing.T) {
+	t.Run("repeated_targets", func(t *testing.T) {
+		sql := "SELECT " + strings.Repeat("v.*,", 4999) + "v.* FROM synthetic.visible v"
+		if len(sql) >= 65536 {
+			t.Fatal("fixture exceeds input bound")
+		}
+		got, err := Analyze(context.Background(), sql, fixturePolicy())
+		if !errors.Is(err, ErrRejected) || !reflect.DeepEqual(got, Analysis{}) {
+			t.Fatalf("wildcard budget must reject, got columns=%d err=%v", len(got.Columns), err)
+		}
+	})
+	t.Run("single_wide_catalog", func(t *testing.T) {
+		p := fixturePolicy()
+		cols := make([]string, 4097)
+		for i := range cols {
+			cols[i] = fmt.Sprintf("c%d", i)
+		}
+		p.Relations["synthetic.wide"] = Relation{Columns: cols, Complete: true}
+		got, err := Analyze(context.Background(), "SELECT w.* FROM synthetic.wide w", p)
+		if !errors.Is(err, ErrRejected) || !reflect.DeepEqual(got, Analysis{}) {
+			t.Fatalf("expansion budget must reject, got columns=%d err=%v", len(got.Columns), err)
+		}
+	})
 }
