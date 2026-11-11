@@ -1,0 +1,46 @@
+name: PSR Go core artifact
+
+on:
+  push:
+    branches:
+      - psr/go-core
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux-amd64:
+    runs-on: ubuntu-24.04
+    container:
+      image: infiniflow/github_action_runner:latest
+      options: --user 0:0
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Build and package pinned source
+        run: bash psr/package-go-core.sh
+
+      - name: Upload binary payload
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: psr-go-core-${{ github.sha }}-linux-amd64
+          path: |
+            dist/psr-go-core/*.tar.gz
+            dist/psr-go-core/*.tar.gz.sha256
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Record artifact identity
+        env:
+          ARTIFACT_DIGEST: ${{ steps.upload.outputs.artifact-digest }}
+        run: |
+          {
+            echo "Source commit: \`${GITHUB_SHA}\`"
+            echo "Artifact: \`psr-go-core-${GITHUB_SHA}-linux-amd64\`"
+            echo "Uploaded artifact digest: \`${ARTIFACT_DIGEST}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -29,6 +29,12 @@ sidecar. `BUILD-MANIFEST.txt` records the source commit, target architecture,
 Go toolchain, and build command; `SHA256SUMS` verifies the archive contents.
 The archive also carries the repository license and API/build contracts.
 `PSR_ARTIFACT_DIR` can select another output directory.
+The `PSR Go core artifact` Actions workflow runs this process for pushes to
+`psr/go-core` and uploads a Linux/amd64 artifact named with the full source SHA
+for 30 days. Its upload digest is recorded in the workflow summary. The CI
+runner image currently uses a mutable upstream tag, so this pins source identity
+and records the build toolchain but does not promise byte-identical rebuilds
+across runner-image updates.
 
 The archive is a **binary payload, not a complete runtime image**. It contains
 only `bin/ragflow_server` and `bin/ragflow-cli`. In particular, it does not
