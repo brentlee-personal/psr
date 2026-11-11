@@ -214,8 +214,8 @@ func (v *UserTokenVerifier) checkIdentityState(ctx context.Context, identity *Au
 	if *user.Status != "1" || user.IsActive != "1" {
 		return ErrUserTokenDenied
 	}
-	// CE and system-admin credentials carry no verified active tenant. Never
-	// infer one from user ID or accept an application-supplied tenant instead.
+	// The downstream EE resolver path requires a verified signed tenant.
+	// Never infer one from user ID or accept an application-supplied tenant here.
 	if identity.TenantID == "" {
 		return ErrUserTokenUnverified
 	}
