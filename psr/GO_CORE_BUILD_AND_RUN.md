@@ -81,8 +81,43 @@ already authenticated customer subject to an authorized RAGFlow identity and
 enforce customer-owned grants in its private application layer. Keep those
 mappings, customer content, credentials, and grants out of PSR.
 
-The ToB semantic PostgreSQL store remains separate from RAGFlow metadata. The
-Go metadata configuration does not accept generic `DB_TYPE=postgres`; its
-PostgreSQL-compatible metadata option is the separately supported `vastbase`
-configuration. Do not point the semantic store at the metadata database or
-infer a migration path from this artifact contract.
+The ToB semantic state store remains separate from the RAGFlow metadata
+store even when both use the same PostgreSQL instance. Native PostgreSQL
+metadata is selected with `DB_TYPE=postgres`; it does not enable Vastbase's
+MySQL compatibility mode. Use a dedicated database and role, never the
+existing semantic database.
+
+The `postgres:` configuration section accepts `host`, `port`, `name`, `user`,
+`password`, `max_connections`, `stale_timeout`, `ssl_mode`, and `ssl_root_cert`.
+The normal Viper environment mapping accepts the corresponding
+`RAGFLOW_POSTGRES_HOST`, `RAGFLOW_POSTGRES_PORT`, `RAGFLOW_POSTGRES_NAME`,
+`RAGFLOW_POSTGRES_USER`, `RAGFLOW_POSTGRES_PASSWORD`,
+`RAGFLOW_POSTGRES_MAX_CONNECTIONS`, `RAGFLOW_POSTGRES_STALE_TIMEOUT`,
+`RAGFLOW_POSTGRES_SSL_MODE`, and `RAGFLOW_POSTGRES_SSL_ROOT_CERT` variables.
+Keep credentials in the existing protected deployment configuration or Secret.
+The default pool is six connections. Remote connections default to
+`ssl_mode=verify-full`; a mounted root certificate can be supplied through
+`ssl_root_cert`.
+
+Before deployment, verify the fixed candidate against a dedicated PostgreSQL
+16 test database with the normal native toolchain:
+
+```sh
+bash build.sh --test ./internal/server/config ./internal/server ./internal/dao
+bash build.sh --test-integration-go -run TestPostgreSQLMetadataIntegration -v ./internal/dao
+```
+
+The integration test requires `PSR_POSTGRES_TEST_DSN`, the exact
+`PSR_POSTGRES_TEST_DATABASE` (beginning with `psr_go_`), and
+`PSR_POSTGRES_TEST_ALLOW_WRITE=1`. It verifies the database identity before
+creating its uniquely named schemas, and preserves those schemas for
+independent inspection. Credentials are not printed. A missing test DSN
+skips the integration test and is not database acceptance.
+
+Native PostgreSQL migrations validate existing generated-column and unique
+index definitions instead of accepting a same-named incompatible object.
+Dataset names and canvas titles retain their explicit case-folded uniqueness
+contracts. An unknown legacy `tenant_llm` primary-key layout is rejected;
+this path does not automatically convert an arbitrary historical schema.
+Source/unit checks, database integration, complete service startup and business
+acceptance remain separate evidence.

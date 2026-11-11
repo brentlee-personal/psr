@@ -261,7 +261,7 @@ func (dao *MemoryDAO) DeleteByID(ctx context.Context, db *gorm.DB, id string) er
 //
 //	memory, err := dao.GetWithOwnerNameByID("memory123")
 func (dao *MemoryDAO) GetWithOwnerNameByID(ctx context.Context, db *gorm.DB, id string) (*entity.MemoryListItem, error) {
-	querySQL := `
+	querySQL := metadataSQL(db, `
 		SELECT m.id, m.name, m.avatar, m.tenant_id, m.memory_type,
 			m.storage_type, m.embd_id, m.tenant_embd_id, m.llm_id, m.tenant_llm_id,
 			m.permissions, m.description, m.memory_size, m.forgetting_policy,
@@ -271,7 +271,7 @@ func (dao *MemoryDAO) GetWithOwnerNameByID(ctx context.Context, db *gorm.DB, id 
 		FROM memory m
 		LEFT JOIN user u ON m.tenant_id = u.id
 		WHERE m.id = ?
-	`
+	`)
 
 	var rawResult struct {
 		entity.Memory
@@ -352,7 +352,7 @@ func (dao *MemoryDAO) GetByFilter(ctx context.Context, db *gorm.DB, memoryIDs, t
 		return nil, 0, err
 	}
 
-	querySQL := fmt.Sprintf(`
+	querySQL := fmt.Sprintf(metadataSQL(db, `
 		SELECT m.id, m.name, m.avatar, m.tenant_id, m.memory_type,
 			m.storage_type, m.embd_id, m.tenant_embd_id, m.llm_id, m.tenant_llm_id,
 			m.permissions, m.description, m.memory_size, m.forgetting_policy,
@@ -363,7 +363,7 @@ func (dao *MemoryDAO) GetByFilter(ctx context.Context, db *gorm.DB, memoryIDs, t
 		LEFT JOIN user u ON m.tenant_id = u.id
 		%s
 		ORDER BY m.create_time DESC
-	`, whereClause)
+	`), whereClause)
 	queryArgs := args
 	if pageSize > 0 {
 		querySQL += " LIMIT ? OFFSET ?"

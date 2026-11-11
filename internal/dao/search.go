@@ -59,12 +59,12 @@ func (dao *SearchDAO) ListByResourceIDs(ctx context.Context, db *gorm.DB, resour
 
 	// Build query with join to user table for nickname and avatar
 	query := db.WithContext(ctx).Model(&entity.Search{}).
-		Select(`
+		Select(metadataSQL(db, `
 			search.*,
 			user.nickname,
 			user.avatar as tenant_avatar
-		`).
-		Joins("LEFT JOIN user ON search.tenant_id = user.id")
+		`)).
+		Joins(metadataSQL(db, "LEFT JOIN user ON search.tenant_id = user.id"))
 
 	query = query.Where("search.id IN ? AND search.status = ?", resourceIDs, "1")
 	if len(ownerIDs) > 0 {
@@ -118,7 +118,7 @@ func (dao *SearchDAO) GetByID(ctx context.Context, db *gorm.DB, id string) (*ent
 func (dao *SearchDAO) GetDetailByID(ctx context.Context, db *gorm.DB, searchID string) (*SearchDetailRow, error) {
 	var detail SearchDetailRow
 	err := db.WithContext(ctx).Table("search").
-		Select(`
+		Select(metadataSQL(db, `
 			search.id,
 			search.avatar,
 			search.tenant_id,
@@ -129,8 +129,8 @@ func (dao *SearchDAO) GetDetailByID(ctx context.Context, db *gorm.DB, searchID s
 			search.update_time,
 			user.nickname,
 			user.avatar AS tenant_avatar
-		`).
-		Joins("JOIN user ON user.id = search.tenant_id AND user.status = ?", "1").
+		`)).
+		Joins(metadataSQL(db, "JOIN user ON user.id = search.tenant_id AND user.status = ?"), "1").
 		Where("search.id = ? AND search.status = ?", searchID, "1").
 		Scan(&detail).Error
 	if err != nil {

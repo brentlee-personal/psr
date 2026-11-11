@@ -168,7 +168,7 @@ func (dao *UserDAO) List(ctx context.Context, db *gorm.DB, opts UserListOptions)
 		query = query.Limit(opts.Limit)
 	}
 	users := make([]*entity.User, 0)
-	err = query.Select("user.*").Find(&users).Error
+	err = query.Select(metadataSQL(db, "user.*")).Find(&users).Error
 	return users, total, err
 }
 
