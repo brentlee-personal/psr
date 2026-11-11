@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -313,6 +314,31 @@ func TestRouterSetupPipelinesRoutesRequireAuth(t *testing.T) {
 				t.Fatalf("GET %s: status=%d body=%s; want 401 (route must be behind auth middleware)", path, resp.Code, resp.Body.String())
 			}
 		})
+	}
+}
+
+func TestRouterSetupPermissionCheckRequiresAuth(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	originalLogger := common.Logger
+	common.Logger = zap.NewNop()
+	t.Cleanup(func() { common.Logger = originalLogger })
+
+	engine := gin.New()
+	r := &Router{
+		authHandler:       handler.NewAuthHandler(),
+		permissionHandler: handler.NewPermissionHandler(nil),
+	}
+	r.Setup(engine)
+
+	resp := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/permissions/check", strings.NewReader(
+		`{"resource":{"kind":"dataset","id":"dataset-1"},"operation":"read"}`,
+	))
+	req.Header.Set("Content-Type", "application/json")
+	engine.ServeHTTP(resp, req)
+
+	if resp.Code != http.StatusUnauthorized {
+		t.Fatalf("POST /api/v1/permissions/check: status=%d body=%s; want 401 (route must be behind auth middleware)", resp.Code, resp.Body.String())
 	}
 }
 
