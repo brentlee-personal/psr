@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"ragflow/internal/common"
 	"strconv"
 	"strings"
@@ -75,18 +76,38 @@ func NewNatsEngine(host string, port int) *NatsEngine {
 	}
 }
 
+// startupCause keeps ordinary typed connection errors, but copies URL errors
+// without their credential-bearing URI or raw parser text. Wrapping the original
+// url.Error would reintroduce the secret through startup Error/Fatal formatting.
+func startupCause(err error) error {
+	var urlErr *url.Error
+	if !errors.As(err, &urlErr) {
+		return err
+	}
+	category := "URL operation failed"
+	if urlErr.Op == "parse" {
+		category = "invalid URL"
+	}
+	return &url.Error{
+		Op:  urlErr.Op,
+		URL: common.RedactURLUserInfo(urlErr.URL),
+		Err: fmt.Errorf("%s (%T)", category, urlErr.Err),
+	}
+}
+
 func (n *NatsEngine) Init() error {
 	var err error
 	natsURL := fmt.Sprintf("nats://%s:%d", n.host, n.port)
+	logURL := common.RedactURLUserInfo(natsURL)
 	n.nc, err = nats.Connect(natsURL)
 	if err != nil {
-		return fmt.Errorf("failed to connect to NATS at %s: %w", natsURL, err)
+		return fmt.Errorf("failed to connect to NATS at %s: %w", logURL, startupCause(err))
 	}
 
 	n.jetStream, err = jetstream.New(n.nc)
 	if err != nil {
 		n.nc.Close()
-		return fmt.Errorf("failed to create JetStream context at %s: %w", natsURL, err)
+		return fmt.Errorf("failed to create JetStream context at %s: %w", logURL, startupCause(err))
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -106,14 +127,14 @@ func (n *NatsEngine) Init() error {
 	if err != nil {
 		if !isStreamExistsErr(err) {
 			n.nc.Close()
-			return fmt.Errorf("fail to create stream at %s: %w", natsURL, err)
+			return fmt.Errorf("fail to create stream at %s: %w", logURL, startupCause(err))
 		}
 
 		common.Info("NATS stream already exists, use existing stream")
 		n.stream, err = n.jetStream.Stream(ctx, "RAGFLOW_TASKS")
 		if err != nil {
 			n.nc.Close()
-			return fmt.Errorf("fail to get existing stream at %s: %w", natsURL, err)
+			return fmt.Errorf("fail to get existing stream at %s: %w", logURL, startupCause(err))
 		}
 		// Reconcile the running stream with the configured limits so an existing
 		// stream created under older settings (e.g. DiscardOld + small MaxBytes)
@@ -122,13 +143,13 @@ func (n *NatsEngine) Init() error {
 		n.stream, err = n.jetStream.UpdateStream(ctx, streamCfg)
 		if err != nil {
 			n.nc.Close()
-			return fmt.Errorf("fail to update existing stream at %s: %w", natsURL, err)
+			return fmt.Errorf("fail to update existing stream at %s: %w", logURL, startupCause(err))
 		}
 		common.Info("NATS stream updated with current config (discard=new, larger limits)")
 	} else {
-		common.Info(fmt.Sprintf("NATS stream create successfully at %s", natsURL))
+		common.Info(fmt.Sprintf("NATS stream create successfully at %s", logURL))
 	}
-	common.Info(fmt.Sprintf("NATS stream RAGFLOW_TASKS ready at %s", natsURL))
+	common.Info(fmt.Sprintf("NATS stream RAGFLOW_TASKS ready at %s", logURL))
 
 	return nil
 }
