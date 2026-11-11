@@ -74,6 +74,8 @@ export BUILDX_METADATA_PROVENANCE=disabled
 "${DOCKER[@]}" buildx build --platform linux/amd64 --target production --network none \
  --provenance=false --sbom=false --build-context "base=docker-image://$BASE_TAG" \
  --build-context "infiniflow/ragflow_deps:latest=$OUT/work/resources" \
+ --build-context "ubuntu:24.04=docker-image://ubuntu@$(jq -er ' .ubuntu.index' "$LOCK")" \
+ --build-context "runner-amd64=docker-image://$RUNNER" \
  --build-context "go-builder=$OUT/work/go-stage" --build-context "web-builder=$OUT/work/web-stage" \
  --label "org.opencontainers.image.revision=$SOURCE" \
  --label "io.psr.producer.revision=$PRODUCER" \
