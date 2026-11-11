@@ -439,6 +439,20 @@ func (r *registry) produce(ctx context.Context, s imageSpec, producer, out strin
 	fmt.Printf("produced name=%s upstream=%s config=%s archive_sha256=%s\n", s.Name, s.Digest, m.Config.Digest, archiveHash)
 	return nil
 }
+func selectedImages(lock inputLock, selection string) ([]imageSpec, error) {
+	if selection == "all" {
+		return lock.Images, nil
+	}
+	if selection == "minio" {
+		for _, image := range lock.Images {
+			if image.Name == "minio" {
+				return []imageSpec{image}, nil
+			}
+		}
+	}
+	return nil, fmt.Errorf("dependency selection must be all or minio")
+}
+
 func run(args []string) error {
 	registry := newRegistry()
 	ctx := context.Background()
@@ -461,8 +475,8 @@ func run(args []string) error {
 		encoder.SetIndent("", "  ")
 		return encoder.Encode(lock)
 	}
-	if len(args) != 2 || !sourceRE.MatchString(args[1]) {
-		return fmt.Errorf("usage: dependencies OUTPUT_ROOT PRODUCER_SHA; or dependencies audit")
+	if (len(args) != 2 && len(args) != 3) || !sourceRE.MatchString(args[1]) {
+		return fmt.Errorf("usage: dependencies OUTPUT_ROOT PRODUCER_SHA [all|minio]; or dependencies audit")
 	}
 	b, err := os.ReadFile("psr/dependencies/inputs.lock.json")
 	if err != nil {
@@ -475,6 +489,14 @@ func run(args []string) error {
 	if err = validateLock(lock); err != nil {
 		return err
 	}
+	selection := "all"
+	if len(args) == 3 {
+		selection = args[2]
+	}
+	images, err := selectedImages(lock, selection)
+	if err != nil {
+		return err
+	}
 	out, err := filepath.Abs(args[0])
 	if err != nil {
 		return err
@@ -482,7 +504,7 @@ func run(args []string) error {
 	if err = os.Mkdir(out, 0755); err != nil {
 		return err
 	}
-	for _, s := range lock.Images {
+	for _, s := range images {
 		if err = registry.produce(ctx, s, args[1], out); err != nil {
 			return fmt.Errorf("%s: %w", s.Name, err)
 		}

@@ -22,6 +22,35 @@ exec > >(tee "$OUT/logs/producer.log") 2>&1
 trap 'rc=$?; if ((rc)); then printf "state=FAILED exit=%s producer_source=%s application_source=%s\n" "$rc" "$PRODUCER" "$SOURCE" > "$OUT/RESULT"; fi' EXIT
 printf 'producer_source=%s application_source=%s started=%s\n' "$PRODUCER" "$SOURCE" "$(date -Is)"
 RUNNER=$(jq -er '.runner' "$LOCK")
+# Fixed reviewed toolchain input; this recipe never downloads or accepts a URL argument.
+TOOLCHAIN_INPUT=$(realpath -e "${PSR_APPROVED_TOOLCHAIN_INPUT:-$INPUT}")
+jq -e '.go_toolchain | .version == "go1.27.3" and .os == "linux" and .arch == "amd64" and .archive == "go1.27.3.linux-amd64.tar.gz" and .url == "https://go.dev/dl/go1.27.3.linux-amd64.tar.gz" and .sha256 == "65efbc80fdc1fa2cd2631cad5b481777a68e8725f34e89f50fc6ac714e379b40" and .size == 70588678 and .checksum_source == "https://go.dev/dl/?mode=json&include=all" and .checksum_source_archive == "go-downloads-all.json" and .checksum_source_sha256 == "dff81fa9170d1a7c6a1f38b6cec38c0e3a9e67fd0354419c123ab7c8b8f3c3eb" and .go_binary_sha256 == "5f5eb6d0b2fb6aa0bb5d5f8c5f1c944e0de955c925f0111af92a9d8f79680b5b" and .gofmt_binary_sha256 == "fd464d1c9098a6714d06bd3fcd2a1fedcdd291e710241160ebb663bf99adf2f8"' "$LOCK" >/dev/null
+for f in "$TOOLCHAIN_INPUT/go1.27.3.linux-amd64.tar.gz" "$TOOLCHAIN_INPUT/go-downloads-all.json"; do [[ -f $f && ! -L $f && $(realpath -e "$f") == "$f" ]]; done
+mkdir "$OUT/work/toolchain-inputs"
+cp --reflink=auto -- "$TOOLCHAIN_INPUT/go1.27.3.linux-amd64.tar.gz" "$TOOLCHAIN_INPUT/go-downloads-all.json" "$OUT/work/toolchain-inputs/"
+GO_ARCHIVE=$OUT/work/toolchain-inputs/go1.27.3.linux-amd64.tar.gz
+GO_METADATA=$OUT/work/toolchain-inputs/go-downloads-all.json
+[[ $(stat -c %s "$GO_ARCHIVE") == 70588678 ]]
+[[ $(sha256sum "$GO_ARCHIVE" | cut -d' ' -f1) == $(jq -er '.go_toolchain.sha256' "$LOCK") ]]
+[[ $(sha256sum "$GO_METADATA" | cut -d' ' -f1) == $(jq -er '.go_toolchain.checksum_source_sha256' "$LOCK") ]]
+jq -e '[.[] | select(.version == "go1.27.3") | .files[] | select(.filename == "go1.27.3.linux-amd64.tar.gz" and .os == "linux" and .arch == "amd64" and .kind == "archive")] | length == 1 and .[0].sha256 == "65efbc80fdc1fa2cd2631cad5b481777a68e8725f34e89f50fc6ac714e379b40" and .[0].size == 70588678' "$GO_METADATA" >/dev/null
+# Validate all names/types before extracting into a newly created private directory.
+# A UTF-8 locale preserves official non-ASCII test filenames; escape quoting
+# renders control characters and backslashes rejectable.
+[[ $(LC_ALL=C.UTF-8 locale charmap) == UTF-8 ]]
+LC_ALL=C.UTF-8 tar --list --gzip --file "$GO_ARCHIVE" --quoting-style=escape > "$OUT/logs/go-archive-members.txt"
+while IFS= read -r member; do
+ [[ $member == go || $member == go/* ]]
+ [[ "/$member/" != */../* && "/$member/" != */./* && $member != *//* && $member != *\\* ]]
+done < "$OUT/logs/go-archive-members.txt"
+[[ $(sed 's:/$::' "$OUT/logs/go-archive-members.txt" | LC_ALL=C sort | uniq -d | wc -l) == 0 ]]
+LC_ALL=C.UTF-8 tar --list --verbose --gzip --file "$GO_ARCHIVE" --quoting-style=escape > "$OUT/logs/go-archive-types.txt"
+LC_ALL=C awk 'substr($0,1,1) != "-" && substr($0,1,1) != "d" {bad=1} END {exit bad}' "$OUT/logs/go-archive-types.txt"
+mkdir "$OUT/work/toolchain"
+tar --no-same-owner --no-same-permissions --extract --gzip --file "$GO_ARCHIVE" --directory "$OUT/work/toolchain"
+GO_BINARY_SHA=$(sha256sum "$OUT/work/toolchain/go/bin/go" | cut -d' ' -f1)
+[[ $GO_BINARY_SHA == $(jq -er '.go_toolchain.go_binary_sha256' "$LOCK") ]]
+[[ $(sha256sum "$OUT/work/toolchain/go/bin/gofmt" | cut -d' ' -f1) == $(jq -er '.go_toolchain.gofmt_binary_sha256' "$LOCK") ]]
 [[ $(sha256sum "$APP/Dockerfile" | cut -d' ' -f1) == $(jq -er '.dockerfile_sha256' "$LOCK") ]]
 # Inputs are copied from reviewed caches, never trusted just because present.
 copy_locked_files() {
@@ -62,6 +91,8 @@ if [[ -d "$INPUT/gocache" ]]; then cp --reflink=auto -a "$INPUT/gocache/." "$OUT
  --cpus=2 --cpuset-cpus=6,7 --memory=10g --pids-limit=512 --network=host \
  --env "HTTPS_PROXY=${HTTPS_PROXY:-}" --env "HTTP_PROXY=${HTTP_PROXY:-}" --env "NO_PROXY=${NO_PROXY:-}" \
  --env NVIDIA_VISIBLE_DEVICES=void --env CUDA_VISIBLE_DEVICES= --env GOTOOLCHAIN=local \
+ --env GOROOT=/opt/reviewed-go --env PATH=/opt/reviewed-go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+ --mount "type=bind,src=$OUT/work/toolchain/go,dst=/opt/reviewed-go,readonly" \
  --env GOMAXPROCS=2 --env 'GOFLAGS=-p=2 -buildvcs=false' --env GIT_TERMINAL_PROMPT=0 \
  --env GOPROXY=https://proxy.golang.org,direct --env CC=clang --env CXX=clang++ \
  --env GOMODCACHE=/root/.cache/gomod --env GOCACHE=/root/.cache/gobuild \
@@ -71,7 +102,7 @@ if [[ -d "$INPUT/gocache" ]]; then cp --reflink=auto -a "$INPUT/gocache/." "$OUT
  --mount "type=bind,src=$OUT/work/gocache,dst=/root/.cache/gobuild" \
  --mount "type=bind,src=$OUT/work/tmp,dst=/tmp" \
  --workdir /workspace --entrypoint /bin/bash "$RUNNER" -ec \
- 'go version; clang --version | head -1; ld.lld --version; go mod download; go mod verify; bash build.sh --all' | tee "$OUT/logs/go-build.log"
+ 'test "$(go env GOVERSION)" = go1.27.3; test "$(go env GOROOT)" = /opt/reviewed-go; go version; go env -json GOVERSION GOROOT GOOS GOARCH GOTOOLCHAIN; clang --version | head -1; ld.lld --version; go mod download; go mod verify; bash build.sh --all; test "$(go version bin/ragflow_server)" = "bin/ragflow_server: go1.27.3"; test "$(go version bin/ragflow-cli)" = "bin/ragflow-cli: go1.27.3"; go version -m bin/ragflow_server' | tee "$OUT/logs/go-build.log"
 "${DOCKER[@]}" run --rm --runtime=runc --user 0:0 --env HOME=/root --read-only \
  --cpus=2 --cpuset-cpus=6,7 --memory=12g --pids-limit=512 --network=host \
  --env "HTTPS_PROXY=${HTTPS_PROXY:-}" --env "HTTP_PROXY=${HTTP_PROXY:-}" --env "NO_PROXY=${NO_PROXY:-}" \
@@ -104,11 +135,13 @@ tar --no-same-owner -xf "$OUT/payload/core-runtime.oci.tar" -C "$OUT/work/oci"
 # Standalone stdlib inspector is a packaging tool, not a backend build.
 "${DOCKER[@]}" run --rm --runtime=runc --user 0:0 --env HOME=/root --read-only \
  --cpus=1 --memory=1g --pids-limit=128 --network=none --env GOTOOLCHAIN=local \
+ --env GOROOT=/opt/reviewed-go --env PATH=/opt/reviewed-go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+ --mount "type=bind,src=$OUT/work/toolchain/go,dst=/opt/reviewed-go,readonly" \
  --env GOCACHE=/tmp/gocache --tmpfs /tmp:rw,exec,nosuid,nodev,size=512m \
  --mount "type=bind,src=$CONTROL,dst=/control,readonly" \
  --mount "type=bind,src=$OUT/work/oci,dst=/oci,readonly" \
  --workdir /control --entrypoint /bin/bash "$RUNNER" -ec \
- 'go run ./psr/runtime /oci "$1"' -- "$SOURCE" > "$OUT/logs/oci-inspection.json"
+ 'test "$(go env GOVERSION)" = go1.27.3; test "$(go env GOROOT)" = /opt/reviewed-go; go run ./psr/runtime /oci "$1"' -- "$SOURCE" > "$OUT/logs/oci-inspection.json"
 "${DOCKER[@]}" load --input "$OUT/payload/core-runtime.oci.tar"
 # Verify packaged runtime content before emitting a manifest. Full image resource
 # inventory includes configuration templates from public source, never customer config.
@@ -163,10 +196,11 @@ done
  --entrypoint /usr/sbin/nginx "$RUN_TAG" -t > "$OUT/logs/nginx.log" 2>&1
 jq -Rn '[inputs|capture("^(?<sha256>[0-9a-f]{64})  (?<path>.+)$")]' < "$RECIPE/native.sha256" > "$OUT/logs/native-inputs.json"
 jq -ncS --slurpfile lock "$LOCK" --slurpfile native "$OUT/logs/native-inputs.json" \
+ --arg go_binary "$GO_BINARY_SHA" \
  --arg resources "$(sha256sum "$RECIPE/resources.sha256" | cut -d' ' -f1)" \
  --arg dictionary "$(sha256sum "$RECIPE/dictionary.sha256" | cut -d' ' -f1)" \
  --arg packages "$(sha256sum "$RECIPE/base-packages.tsv" | cut -d' ' -f1)" \
- '{schema:1,inputs:$lock[0],native_files:$native[0],resource_checksums_sha256:$resources,dictionary_checksums_sha256:$dictionary,base_packages_sha256:$packages}' \
+ '{schema:1,inputs:$lock[0],toolchain_verification:{go_binary_sha256:$go_binary,goroot:"/opt/reviewed-go",gotoolchain:"local",built_binary_go_version:"go1.27.3"},native_files:$native[0],resource_checksums_sha256:$resources,dictionary_checksums_sha256:$dictionary,base_packages_sha256:$packages}' \
  > "$OUT/dependencies/dependency-manifest.json"
 DEPENDENCY_SHA=$(sha256sum "$OUT/dependencies/dependency-manifest.json" | cut -d' ' -f1)
 jq -Rn --arg source "$SOURCE" --slurpfile inputs "$OUT/dependencies/dependency-manifest.json" \
@@ -184,6 +218,9 @@ jq -n --arg source "$SOURCE" --arg producer "$PRODUCER" --arg binary "$BINARY_SH
  > "$OUT/payload/source-manifest.json"
 # Keep frozen dependencies available independently of the runtime ZIP contract.
 cp --reflink=auto "$BASE_ARCHIVE" "$OUT/dependencies/production-base.image.tar"
+cp --reflink=auto "$GO_ARCHIVE" "$GO_METADATA" "$OUT/dependencies/"
+[[ $(sha256sum "$OUT/dependencies/go1.27.3.linux-amd64.tar.gz" | cut -d' ' -f1) == $(jq -er '.go_toolchain.sha256' "$LOCK") ]]
+[[ $(sha256sum "$OUT/dependencies/go-downloads-all.json" | cut -d' ' -f1) == $(jq -er '.go_toolchain.checksum_source_sha256' "$LOCK") ]]
 cp "$LOCK" "$RECIPE"/{resources.sha256,native.sha256,dictionary.sha256,base-packages.tsv} "$OUT/dependencies/"
 cp --reflink=auto -a "$OUT/work/resources" "$OUT/dependencies/runtime-resources"
 copy_locked_files "$OUT/work/native" "$RECIPE/native.sha256" "$OUT/dependencies/native-libs"

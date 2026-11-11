@@ -18,12 +18,19 @@ on:
         type: boolean
         default: false
 
+      dependency_component:
+        description: Produce all approved dependencies or only the reviewed S3 replacement
+        required: true
+        type: choice
+        options: [all, minio]
+        default: all
+
 permissions:
   contents: read
 
 jobs:
   linux-amd64:
-    if: github.event_name == 'push' || (!inputs.complete_runtime && !inputs.dependency_only)
+    if: github.event_name == 'push' || (!inputs.complete_runtime && !inputs.dependency_only && inputs.dependency_component == 'all')
     runs-on: ubuntu-24.04
     container:
       image: infiniflow/github_action_runner@sha256:1ac3980a915be9dc9cb51e97dac1864e2d1690dc426b1149d94e2b5edf5157e7
@@ -82,9 +89,12 @@ jobs:
           persist-credentials: false
       - name: Read the reviewed application source lock
         id: lock
+        env:
+          DEPENDENCY_COMPONENT: ${{ inputs.dependency_component }}
         shell: bash
         run: |
           if [[ "${{ inputs.dependency_only }}" == true ]]; then echo "select one producer target" >&2; exit 2; fi
+          [[ "$DEPENDENCY_COMPONENT" == all ]] || { echo "runtime cannot select a dependency component" >&2; exit 2; }
           source_sha=$(jq -er '.application_source_sha | select(test("^[a-f0-9]{40}$"))' control/psr/runtime/inputs.lock.json)
           echo "source_sha=$source_sha" >> "$GITHUB_OUTPUT"
       - name: Check out exact application source
@@ -98,6 +108,7 @@ jobs:
         shell: bash
         env:
           REVIEWED_CACHE: /data/brent/workspace/go-runtime-build-evidence-20261111
+          PSR_APPROVED_TOOLCHAIN_INPUT: /data/brent/workspace/go-core-oci-producer-evidence-20261111/approved-go-toolchain-1.27.3
         run: |
           bash control/psr/runtime/produce.sh "$GITHUB_WORKSPACE/application" \
             "$RUNNER_TEMP/psr-runtime-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
@@ -174,6 +185,8 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Fetch exact approved upstream blobs and produce OCI artifacts
+        env:
+          DEPENDENCY_COMPONENT: ${{ inputs.dependency_component }}
         shell: bash
         run: |
           test "$(git -C control rev-parse HEAD)" = "$GITHUB_SHA"
@@ -188,7 +201,7 @@ jobs:
             --mount "type=bind,src=$output,dst=/output" \
             --workdir /control --entrypoint /bin/bash \
             infiniflow/github_action_runner@sha256:1ac3980a915be9dc9cb51e97dac1864e2d1690dc426b1149d94e2b5edf5157e7 \
-            -ec 'go run ./psr/dependencies /output/payload "$1"' -- "$GITHUB_SHA" \
+            -ec 'go run ./psr/dependencies /output/payload "$1" "$2"' -- "$GITHUB_SHA" "$DEPENDENCY_COMPONENT" \
             2>&1 | tee "$output/logs/producer.log"
       - name: Persist dependency evidence
         if: always()
@@ -205,6 +218,7 @@ jobs:
             fi
           done
       - name: Upload kvrocks OCI payload
+        if: success() && inputs.dependency_component == 'all'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: psr-test-dependency-kvrocks-linux-amd64
@@ -213,6 +227,7 @@ jobs:
           compression-level: 0
           retention-days: 30
       - name: Upload nats OCI payload
+        if: success() && inputs.dependency_component == 'all'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: psr-test-dependency-nats-linux-amd64
@@ -221,6 +236,7 @@ jobs:
           compression-level: 0
           retention-days: 30
       - name: Upload infinity OCI payload
+        if: success() && inputs.dependency_component == 'all'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: psr-test-dependency-infinity-linux-amd64

@@ -116,3 +116,26 @@ rollback remain separate gates under the deployment coordinator.
 Rollback of this producer consists of selecting an earlier reviewed control
 commit and its compatible fixed input lock. Existing deployed services are
 unaffected by producing artifacts.
+
+
+## Reviewed Go compiler input
+
+The complete-runtime candidate uses the exact official Go1.27.3 Linux amd64
+archive and the frozen official download-metadata snapshot recorded in
+`inputs.lock.json.go_toolchain`. The producer verifies archive size/SHA,
+metadata SHA/selected file, safe archive members and the go/gofmt executable
+hashes before mounting GOROOT read only. It asserts both the selected compiler
+and the resulting server/CLI build versions. Clang/LLD20 and the existing
+native74 inputs remain pinned independently.
+
+The workflow's `PSR_APPROVED_TOOLCHAIN_INPUT` points to an owned, checksum
+verified GPU input cache. For reconstruction from the normal frozen-input
+artifact, leave that variable unset and restore the archive/metadata beside
+the existing REVIEWED_CACHE inputs. Both public files are included in the
+new frozen-input artifact; the final runtime image receives only application
+outputs, not GOROOT or build credentials.
+
+This compiler adoption applies to complete-runtime builds and their OCI
+inspector. It does not claim the legacy binary or dependency-packaging tool
+job runs with Go1.27.3; dependency image bytes are the separately pinned
+upstream images.

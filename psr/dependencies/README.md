@@ -74,3 +74,12 @@ They enforce closed inputs, platform selection, blob tamper rejection and
 byte-preserving deterministic OCI packaging. Actual upstream pulls, artifact
 upload, broker publication and ACK service readiness are separate evidence.
 
+
+
+For a reviewed S3 replacement, dispatch `dependency_only=true`,
+`complete_runtime=false`, `dependency_component=minio`. The default
+`dependency_component=all` retains the original four-image operation. Only
+`all` and `minio` are accepted; source manifests and actual Actions identities
+remain mandatory. The minio-only mode does not reproduce or replace the three
+existing successful dependency artifacts. A changed Silo pin requires its own
+normal successful run, independent scan and compatibility result.

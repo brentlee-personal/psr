@@ -196,3 +196,20 @@ func TestLockedSiloCandidateInputs(t *testing.T) {
 	}
 	t.Fatal("locked Silo candidate missing")
 }
+
+func TestMinioOnlySelectionIsClosedAndAvoidsOtherImages(t *testing.T) {
+	lock := validLock()
+	images, err := selectedImages(lock, "minio")
+	if err != nil || len(images) != 1 || images[0].Name != "minio" || images[0].Repository != "pgsty/silo" {
+		t.Fatal("incorrect minio-only selection")
+	}
+	all, err := selectedImages(lock, "all")
+	if err != nil || len(all) != 4 {
+		t.Fatal("all selection changed")
+	}
+	for _, selection := range []string{"nats", "serve", "https://untrusted/image", "../minio"} {
+		if _, err = selectedImages(lock, selection); err == nil {
+			t.Fatal("accepted unapproved image selection")
+		}
+	}
+}

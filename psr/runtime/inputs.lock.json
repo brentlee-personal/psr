@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "application_source_sha": "5f5f03a9e21dfe3a64819f3d24e58a5e494f9b73",
+  "application_source_sha": "2a1c494ffe64cf3c3cf437d7a61d1ff7382eed10",
   "platform": "linux/amd64",
   "runner": "infiniflow/github_action_runner@sha256:1ac3980a915be9dc9cb51e97dac1864e2d1690dc426b1149d94e2b5edf5157e7",
   "dockerfile_sha256": "7471eb00931030e3c1d9b708a2c76d20468cfa8bff2c561e2f79baf1bd15d762",
@@ -32,5 +32,20 @@
   "ubuntu": {
     "index": "sha256:fe81560990fae86dc4743202b2cb4d3df98d0bcf949173cecef15ce1127ef852",
     "amd64": "sha256:78d4744ead1f5b19b04d0df558ab182a5300903900755e515b2ca4d10eb2044d"
+  },
+  "go_toolchain": {
+    "version": "go1.27.3",
+    "os": "linux",
+    "arch": "amd64",
+    "archive": "go1.27.3.linux-amd64.tar.gz",
+    "url": "https://go.dev/dl/go1.27.3.linux-amd64.tar.gz",
+    "sha256": "65efbc80fdc1fa2cd2631cad5b481777a68e8725f34e89f50fc6ac714e379b40",
+    "size": 70588678,
+    "checksum_source": "https://go.dev/dl/?mode=json&include=all",
+    "checksum_source_sha256": "dff81fa9170d1a7c6a1f38b6cec38c0e3a9e67fd0354419c123ab7c8b8f3c3eb",
+    "metadata_snapshot_recorded_utc": "2026-11-11T11:51:00.165013+00:00",
+    "checksum_source_archive": "go-downloads-all.json",
+    "go_binary_sha256": "5f5eb6d0b2fb6aa0bb5d5f8c5f1c944e0de955c925f0111af92a9d8f79680b5b",
+    "gofmt_binary_sha256": "fd464d1c9098a6714d06bd3fcd2a1fedcdd291e710241160ebb663bf99adf2f8"
   }
 }
