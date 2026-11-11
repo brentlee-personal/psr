@@ -15,6 +15,8 @@ SOURCE=$(jq -er '.application_source_sha' "$LOCK")
 [[ -z $(git -C "$APP" status --porcelain --untracked-files=no) ]]
 [[ $(uname -s)/$(uname -m) == Linux/x86_64 ]]
 [[ ! -e "$OUT" ]] || { echo 'output must be a new directory' >&2; exit 1; }
+[[ $(df -PB1 /var/lib/docker | awk 'NR==2 {print $4}') -gt 17179869184 ]] || { echo 'Docker free space below 16GiB floor' >&2; exit 1; }
+[[ $(df -PB1 "$(dirname "$OUT")" | awk 'NR==2 {print $4}') -gt 21474836480 ]] || { echo 'output volume free space below 20GiB' >&2; exit 1; }
 mkdir -p "$OUT"/{payload,work,logs,dependencies}
 exec > >(tee "$OUT/logs/producer.log") 2>&1
 printf 'producer_source=%s application_source=%s started=%s\n' "$PRODUCER" "$SOURCE" "$(date -Is)"
@@ -44,7 +46,7 @@ mkdir -p "$OUT/work"/{gomod,gocache,tmp,npm,tmp-web}
 if [[ -d "$INPUT/gomodcache" ]]; then cp --reflink=auto -a "$INPUT/gomodcache/." "$OUT/work/gomod/"; fi
 if [[ -d "$INPUT/gocache" ]]; then cp --reflink=auto -a "$INPUT/gocache/." "$OUT/work/gocache/"; fi
 "${DOCKER[@]}" run --rm --runtime=runc --user 0:0 --env HOME=/root --read-only \
- --cpus=2 --memory=10g --pids-limit=512 --network=host \
+ --cpus=2 --cpuset-cpus=6,7 --memory=10g --pids-limit=512 --network=host \
  --env NVIDIA_VISIBLE_DEVICES=void --env CUDA_VISIBLE_DEVICES= --env GOTOOLCHAIN=local \
  --env GOMAXPROCS=2 --env 'GOFLAGS=-p=2 -buildvcs=false' --env GIT_TERMINAL_PROMPT=0 \
  --env GOPROXY=https://proxy.golang.org,direct --env CC=clang --env CXX=clang++ \
@@ -57,7 +59,7 @@ if [[ -d "$INPUT/gocache" ]]; then cp --reflink=auto -a "$INPUT/gocache/." "$OUT
  --workdir /workspace --entrypoint /bin/bash "$RUNNER" -ec \
  'go version; clang --version | head -1; ld.lld --version; go mod download; go mod verify; bash build.sh --all' | tee "$OUT/logs/go-build.log"
 "${DOCKER[@]}" run --rm --runtime=runc --user 0:0 --env HOME=/root --read-only \
- --cpus=2 --memory=12g --pids-limit=512 --network=host \
+ --cpus=2 --cpuset-cpus=6,7 --memory=12g --pids-limit=512 --network=host \
  --env NVIDIA_VISIBLE_DEVICES=void --env CUDA_VISIBLE_DEVICES= \
  --env NODE_OPTIONS=--max-old-space-size=8192 --env VITE_BUILD_SOURCEMAP=false --env VITE_MINIFY=esbuild \
  --mount "type=bind,src=$APP,dst=/workspace" \
