@@ -5,45 +5,43 @@ on:
     branches:
       - psr/go-core
   workflow_dispatch:
+    inputs:
+      complete_runtime:
+        description: Build the reviewed complete runtime on the isolated GPU runner
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
   linux-amd64:
+    if: github.event_name == 'push' || !inputs.complete_runtime
     runs-on: ubuntu-24.04
     container:
-      image: infiniflow/github_action_runner:latest
+      image: infiniflow/github_action_runner@sha256:1ac3980a915be9dc9cb51e97dac1864e2d1690dc426b1149d94e2b5edf5157e7
       options: --user 0:0
     steps:
       - name: Check out source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 0
-
+          persist-credentials: false
       - name: Trust the mounted checkout
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-
       - name: Verify clean source checkout
         run: |
-          if [[ -n "$(git status --porcelain)" ]]; then
-            echo "error: expected a clean checkout before preparing build dependencies" >&2
-            git status --short
-            exit 1
-          fi
-
+          test -z "$(git status --porcelain)"
       - name: Install uv
         uses: astral-sh/setup-uv@v5
-
       - name: Prepare native build dependencies and runtime assets
         run: uv run tools/scripts/download_dev_deps.py
-
       - name: Build and package pinned source
         run: bash psr/package-go-core.sh
-
       - name: Upload binary payload
         id: upload
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: psr-go-core-${{ github.sha }}-linux-amd64
           path: |
@@ -51,13 +49,88 @@ jobs:
             dist/psr-go-core/*.tar.gz.sha256
           if-no-files-found: error
           retention-days: 30
-
       - name: Record artifact identity
         env:
           ARTIFACT_DIGEST: ${{ steps.upload.outputs.artifact-digest }}
         run: |
           {
-            echo "Source commit: \`${GITHUB_SHA}\`"
-            echo "Artifact: \`psr-go-core-${GITHUB_SHA}-linux-amd64\`"
-            echo "Uploaded artifact digest: \`${ARTIFACT_DIGEST}\`"
+            echo "Source commit: `${GITHUB_SHA}`"
+            echo "Artifact: `psr-go-core-${GITHUB_SHA}-linux-amd64`"
+            echo "Uploaded artifact digest: `${ARTIFACT_DIGEST}`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  complete-runtime:
+    if: github.event_name == 'workflow_dispatch' && inputs.complete_runtime
+    runs-on: [self-hosted, Linux, X64, psr-go-runtime-20261111]
+    timeout-minutes: 120
+    steps:
+      - name: Check out producer control source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          path: control
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Read the reviewed application source lock
+        id: lock
+        shell: bash
+        run: |
+          source_sha=$(jq -er '.application_source_sha | select(test("^[a-f0-9]{40}$"))' control/psr/runtime/inputs.lock.json)
+          echo "source_sha=$source_sha" >> "$GITHUB_OUTPUT"
+      - name: Check out exact application source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ steps.lock.outputs.source_sha }}
+          path: application
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Build and verify complete runtime from the locked source
+        shell: bash
+        env:
+          REVIEWED_CACHE: /data/brent/workspace/go-runtime-build-evidence-20261111
+        run: |
+          bash control/psr/runtime/produce.sh "$GITHUB_WORKSPACE/application" \
+            "$RUNNER_TEMP/psr-runtime-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            "$REVIEWED_CACHE" "$GITHUB_SHA"
+      - name: Upload complete runtime payload
+        id: runtime
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: psr-go-runtime-${{ steps.lock.outputs.source_sha }}-linux-amd64
+          path: ${{ runner.temp }}/psr-runtime-${{ github.run_id }}-${{ github.run_attempt }}/payload/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+      - name: Upload frozen input dependencies
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: psr-go-runtime-inputs-${{ github.sha }}
+          path: ${{ runner.temp }}/psr-runtime-${{ github.run_id }}-${{ github.run_attempt }}/dependencies/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+      - name: Preserve producer evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: psr-go-runtime-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/psr-runtime-${{ github.run_id }}-${{ github.run_attempt }}/logs/*
+            ${{ runner.temp }}/psr-runtime-${{ github.run_id }}-${{ github.run_attempt }}/RESULT
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Record payload identity
+        env:
+          ARTIFACT_ID: ${{ steps.runtime.outputs.artifact-id }}
+          ARTIFACT_DIGEST: ${{ steps.runtime.outputs.artifact-digest }}
+          APPLICATION_SOURCE: ${{ steps.lock.outputs.source_sha }}
+        shell: bash
+        run: |
+          {
+            echo "Application source: $APPLICATION_SOURCE"
+            echo "Producer source: $GITHUB_SHA"
+            echo "Actions run: $GITHUB_RUN_ID attempt $GITHUB_RUN_ATTEMPT"
+            echo "Runtime artifact ID: $ARTIFACT_ID"
+            echo "Runtime ZIP digest: $ARTIFACT_DIGEST"
+            cat "$RUNNER_TEMP/psr-runtime-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT/payload/source-manifest.json"
+            echo "Registry publication, RDS integration and ACK deployment are separate gates."
           } >> "$GITHUB_STEP_SUMMARY"

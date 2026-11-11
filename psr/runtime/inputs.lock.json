@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "application_source_sha": "69b1bbfe0f7e8b6af77ab1aaa9182fb2366cccdb",
+  "platform": "linux/amd64",
+  "runner": "infiniflow/github_action_runner@sha256:1ac3980a915be9dc9cb51e97dac1864e2d1690dc426b1149d94e2b5edf5157e7",
+  "dockerfile_sha256": "7471eb00931030e3c1d9b708a2c76d20468cfa8bff2c561e2f79baf1bd15d762",
+  "frozen_base": {
+    "image_id": "sha256:63469c3889bb15e1c08a5b1a9c0c141dd58443842c6d6d9e102b7c6f5a63acbd",
+    "archive": "production-base.image.tar",
+    "archive_sha256": "57ef69d656c46f61cfc93eec62fc4c062eaf91109324f24dfa43687da08fa541",
+    "apt_inventory": "production-base-packages.tsv",
+    "dictionary_content_verified": true,
+    "manifest_digest": "sha256:63469c3889bb15e1c08a5b1a9c0c141dd58443842c6d6d9e102b7c6f5a63acbd",
+    "origin_source_sha": "c37f5b6f39cc177e283dd960d7150d787926143c",
+    "rebuilt_in_producer": false
+  },
+  "resource_revisions": {
+    "InfiniFlow/deepdoc": "9c7aa2c730d7a242d7f04cf6109a6a239aefc717",
+    "BAAI/bge-m3": "5617a9f61b028005a4858fdac845db406aefb181",
+    "BAAI/bge-large-en-v1.5": "d4aa6901d3a41ba39fb536a557fa166f842b0e09",
+    "Qwen/Qwen3-Embedding-0.6B": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+    "intfloat/e5-mistral-7b-instruct": "d62cc4417be0e3289c03dd459d1ef2d137e2554e",
+    "notofonts/noto-cjk": "f8d157532fbfaeda587e826d4cd5b21a49186f7c",
+    "infiniflow/resource": "0937399b60f1949267388548e33ea0d5c0cc25f7"
+  },
+  "native_versions": {
+    "office_oxide": "0.1.16",
+    "pdfium": "7809",
+    "pdf_oxide": "0.3.73",
+    "onnxruntime": "1.29.0-patch2"
+  }
+}
