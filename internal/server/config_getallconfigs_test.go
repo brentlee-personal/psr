@@ -182,3 +182,33 @@ func TestMCPConfigurationDoesNotLogKey(t *testing.T) {
 		t.Fatal("environment key leaked")
 	}
 }
+
+func TestPostgreSQLConfigExportAndLogMask(t *testing.T) {
+	oldConfig, oldViper, oldLogger := globalConfig, globalViper, common.Logger
+	t.Cleanup(func() { globalConfig, globalViper, common.Logger = oldConfig, oldViper, oldLogger })
+	t.Setenv("DB_TYPE", "postgres")
+	path := filepath.Join(t.TempDir(), "postgres.yaml")
+	const secret = "test-only-postgres-password"
+	if err := os.WriteFile(path, []byte("postgres: {host: pg.internal, name: psr_go_test, user: test, password: "+secret+"}\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	core, logs := observer.New(zapcore.InfoLevel)
+	common.Logger = zap.New(core)
+	if err := Init(path); err != nil {
+		t.Fatal(err)
+	}
+	all, err := GetAllConfigs()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(all) == 0 || all[0]["host"] != "pg.internal" || all[0]["database_name"] != "psr_go_test" {
+		t.Fatal("PostgreSQL export missing")
+	}
+	PrintAll()
+	if strings.Contains(fmt.Sprint(logs.All()), secret) {
+		t.Fatal("PostgreSQL password reached configuration log")
+	}
+	if GetConfig().GetPostgreSQLConfig().Password != secret {
+		t.Fatal("masked logging changed runtime connection settings")
+	}
+}

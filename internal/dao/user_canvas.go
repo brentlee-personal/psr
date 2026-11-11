@@ -51,7 +51,11 @@ func applyUserCanvasTagFilter(ctx context.Context, db *gorm.DB, query *gorm.DB, 
 			continue
 		}
 		pattern := "(^|,)[[:space:]]*" + regexp.QuoteMeta(tag) + "[[:space:]]*(,|$)"
-		cond := db.WithContext(ctx).Where("user_canvas.tags REGEXP ?", pattern)
+		operator := "REGEXP"
+		if isPostgreSQLMetaDB(db) {
+			operator = "~"
+		}
+		cond := db.WithContext(ctx).Where("user_canvas.tags "+operator+" ?", pattern)
 		if !hasTag {
 			tagQuery = tagQuery.Where(cond)
 			hasTag = true
@@ -222,7 +226,7 @@ func (dao *UserCanvasDAO) ListByIDs(ctx context.Context, db *gorm.DB, canvasIDs,
 	}
 
 	base := db.WithContext(ctx).Model(&entity.UserCanvas{}).
-		Select(`user_canvas.id,
+		Select(metadataSQL(db, `user_canvas.id,
 		user_canvas.avatar,
 		user_canvas.title,
 		user_canvas.description,
@@ -235,8 +239,8 @@ func (dao *UserCanvasDAO) ListByIDs(ctx context.Context, db *gorm.DB, canvasIDs,
 		user_canvas.canvas_category,
 		user_canvas.tags,
 		user_canvas.create_time,
-		user_canvas.update_time`).
-		Joins("LEFT JOIN user ON user_canvas.user_id = user.id").
+		user_canvas.update_time`)).
+		Joins(metadataSQL(db, "LEFT JOIN user ON user_canvas.user_id = user.id")).
 		Where("user_canvas.id IN ?", canvasIDs)
 	if len(ownerIDs) > 0 {
 		base = base.Where("user_canvas.user_id IN ?", ownerIDs)
@@ -308,9 +312,9 @@ func (dao *UserCanvasDAO) GetOwnerFilterByCanvasIDs(ctx context.Context, db *gor
 		q = q.Where("user_canvas.canvas_category = ?", canvasCategory)
 	}
 	err := q.
-		Select("user_canvas.user_id AS id, user.nickname AS label, COUNT(user_canvas.id) AS count").
-		Joins("LEFT JOIN user ON user_canvas.user_id = user.id").
-		Group("user_canvas.user_id, user.nickname").
+		Select(metadataSQL(db, "user_canvas.user_id AS id, user.nickname AS label, COUNT(user_canvas.id) AS count")).
+		Joins(metadataSQL(db, "LEFT JOIN user ON user_canvas.user_id = user.id")).
+		Group(metadataSQL(db, "user_canvas.user_id, user.nickname")).
 		Scan(&items).Error
 	return items, err
 }
