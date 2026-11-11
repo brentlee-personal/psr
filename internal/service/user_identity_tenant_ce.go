@@ -29,6 +29,9 @@ func observeCENativeUserIdentity(ctx context.Context, db *gorm.DB, token *common
 	if observed.UserCount != 1 {
 		return nil, ErrUserTokenUnverified
 	}
+	if !observed.CurrentTokenMatches {
+		return nil, ErrUserTokenDenied
+	}
 	user := observed.User
 	if user == nil || user.ID == "" || user.Status == nil || user.IsActive == "" || user.IsSuperuser == nil {
 		return nil, ErrUserTokenUnverified

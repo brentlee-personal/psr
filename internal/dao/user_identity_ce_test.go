@@ -22,7 +22,7 @@ func TestNativeUserIdentityObservationBoundsAndIndependentEvidence(t *testing.T)
 	}
 	t.Cleanup(func() { sqlDB.Close() })
 	for _, sql := range []string{
-		`CREATE TABLE user (id TEXT, access_token TEXT, status TEXT, is_active TEXT, is_superuser BOOLEAN)`,
+		`CREATE TABLE user (id TEXT, access_token TEXT COLLATE NOCASE, status TEXT, is_active TEXT, is_superuser BOOLEAN)`,
 		`CREATE TABLE user_tenant (id TEXT, user_id TEXT, tenant_id TEXT, status TEXT)`,
 		`CREATE TABLE tenant (id TEXT, status TEXT)`,
 		`INSERT INTO user VALUES ('user','synthetic-current-access','1','1',false)`,
@@ -39,12 +39,16 @@ func TestNativeUserIdentityObservationBoundsAndIndependentEvidence(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if reads != 1 || observation.UserCount != 1 || len(observation.TenantIDs) != 2 || !observation.UnknownState || !observation.OrphanMembership || !observation.DuplicateMembership {
+	if reads != 1 || observation.UserCount != 1 || !observation.CurrentTokenMatches || len(observation.TenantIDs) != 2 || !observation.UnknownState || !observation.OrphanMembership || !observation.DuplicateMembership {
 		t.Fatalf("incomplete bounded observation: %+v reads=%d", observation, reads)
 	}
 	signed, err := NewUserTenantDAO().ObserveNativeUserIdentity(t.Context(), db, "synthetic-current-access", "B")
 	if err != nil || len(signed.TenantIDs) != 1 || signed.TenantIDs[0] != "B" || signed.UnknownState || signed.OrphanMembership || signed.DuplicateMembership {
 		t.Fatalf("signed observation included unrelated evidence: %+v err=%v", signed, err)
+	}
+	caseMismatch, err := NewUserTenantDAO().ObserveNativeUserIdentity(t.Context(), db, "SYNTHETIC-CURRENT-ACCESS", "B")
+	if err != nil || caseMismatch.UserCount != 1 || caseMismatch.CurrentTokenMatches {
+		t.Fatalf("database collation replaced exact current-token evidence: %+v err=%v", caseMismatch, err)
 	}
 	if err := db.Exec(`INSERT INTO user VALUES ('other','synthetic-current-access','1','1',false),('third','synthetic-current-access','1','1',false)`).Error; err != nil {
 		t.Fatal(err)

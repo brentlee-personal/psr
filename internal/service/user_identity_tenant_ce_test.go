@@ -15,6 +15,13 @@ import (
 	"gorm.io/gorm"
 )
 
+func requireCEWrite(t *testing.T, result *gorm.DB) {
+	t.Helper()
+	if result.Error != nil {
+		t.Fatal(result.Error)
+	}
+}
+
 func assertCEIdentityError(t *testing.T, v *UserTokenVerifier, token string, want error) {
 	t.Helper()
 	identity, err := v.VerifyUserToken(t.Context(), token, 30*time.Minute)
@@ -93,7 +100,7 @@ func TestCENativeTenantEmptyAndSignedSelection(t *testing.T) {
 }
 
 func TestCENativeTenantCandidateCompleteness(t *testing.T) {
-	active, disabled, left, unknown := "1", "0", entity.TenantMembershipStatusLeft, "99"
+	active, disabled, left, invited, unknown := "1", "0", entity.TenantMembershipStatusLeft, entity.TenantMembershipStatusInvited, "99"
 	cases := []struct {
 		name          string
 		mutate        func(*testing.T, *gorm.DB)
@@ -118,6 +125,9 @@ func TestCENativeTenantCandidateCompleteness(t *testing.T) {
 		{"valid-plus-orphan", func(t *testing.T, db *gorm.DB) {
 			addCEFixtureMembership(t, db, "other-member", "other-tenant", &active, nil, false)
 		}, ErrUserTokenUnverified, nil},
+		{"valid-plus-invited", func(t *testing.T, db *gorm.DB) {
+			addCEFixtureMembership(t, db, "other-member", "other-tenant", &invited, &active, true)
+		}, nil, nil},
 		{"valid-plus-left", func(t *testing.T, db *gorm.DB) {
 			addCEFixtureMembership(t, db, "other-member", "other-tenant", &left, nil, false)
 		}, nil, nil},
@@ -125,20 +135,20 @@ func TestCENativeTenantCandidateCompleteness(t *testing.T) {
 			addCEFixtureMembership(t, db, "other-member", "other-tenant", &active, &disabled, true)
 		}, nil, nil},
 		{"null-selected-member", func(t *testing.T, db *gorm.DB) {
-			db.Model(&entity.UserTenant{}).Where("id = ?", "fixture-member").Update("status", nil)
+			requireCEWrite(t, db.Model(&entity.UserTenant{}).Where("id = ?", "fixture-member").Update("status", nil))
 		}, ErrUserTokenUnverified, ErrUserTokenUnverified},
 		{"unknown-selected-member", func(t *testing.T, db *gorm.DB) {
-			db.Model(&entity.UserTenant{}).Where("id = ?", "fixture-member").Update("status", unknown)
+			requireCEWrite(t, db.Model(&entity.UserTenant{}).Where("id = ?", "fixture-member").Update("status", unknown))
 		}, ErrUserTokenUnverified, ErrUserTokenUnverified},
 		{"null-selected-tenant", func(t *testing.T, db *gorm.DB) {
-			db.Model(&entity.Tenant{}).Where("id = ?", "fixture-tenant").Update("status", nil)
+			requireCEWrite(t, db.Model(&entity.Tenant{}).Where("id = ?", "fixture-tenant").Update("status", nil))
 		}, ErrUserTokenUnverified, ErrUserTokenUnverified},
 		{"unknown-selected-tenant", func(t *testing.T, db *gorm.DB) {
-			db.Model(&entity.Tenant{}).Where("id = ?", "fixture-tenant").Update("status", unknown)
+			requireCEWrite(t, db.Model(&entity.Tenant{}).Where("id = ?", "fixture-tenant").Update("status", unknown))
 		}, ErrUserTokenUnverified, ErrUserTokenUnverified},
 		{"orphan-selected-tenant", func(t *testing.T, db *gorm.DB) { db.Where("id = ?", "fixture-tenant").Delete(&entity.Tenant{}) }, ErrUserTokenUnverified, ErrUserTokenDenied},
 		{"disabled-selected-tenant", func(t *testing.T, db *gorm.DB) {
-			db.Model(&entity.Tenant{}).Where("id = ?", "fixture-tenant").Update("status", disabled)
+			requireCEWrite(t, db.Model(&entity.Tenant{}).Where("id = ?", "fixture-tenant").Update("status", disabled))
 		}, ErrUserTokenUnverified, ErrUserTokenDenied},
 		{"duplicate-selected-membership", func(t *testing.T, db *gorm.DB) {
 			if err := db.Migrator().DropIndex(&entity.UserTenant{}, "idx_user_tenant_user_tenant"); err != nil {
@@ -210,18 +220,18 @@ func TestCENativeTenantRequiresExplicitOrdinaryUser(t *testing.T) {
 				want := ErrUserTokenUnverified
 				switch state {
 				case "admin":
-					db.Model(&entity.User{}).Where("id = ?", "fixture-user").Update("is_superuser", true)
+					requireCEWrite(t, db.Model(&entity.User{}).Where("id = ?", "fixture-user").Update("is_superuser", true))
 					want = ErrUserTokenDenied
 				case "unknown-admin":
-					db.Model(&entity.User{}).Where("id = ?", "fixture-user").Update("is_superuser", nil)
+					requireCEWrite(t, db.Model(&entity.User{}).Where("id = ?", "fixture-user").Update("is_superuser", nil))
 				case "unknown-status":
-					db.Model(&entity.User{}).Where("id = ?", "fixture-user").Update("status", "9")
+					requireCEWrite(t, db.Model(&entity.User{}).Where("id = ?", "fixture-user").Update("status", "9"))
 				case "unknown-active":
-					db.Model(&entity.User{}).Where("id = ?", "fixture-user").Update("is_active", "9")
+					requireCEWrite(t, db.Model(&entity.User{}).Where("id = ?", "fixture-user").Update("is_active", "9"))
 				case "null-status":
-					db.Model(&entity.User{}).Where("id = ?", "fixture-user").Update("status", nil)
+					requireCEWrite(t, db.Model(&entity.User{}).Where("id = ?", "fixture-user").Update("status", nil))
 				case "missing-user-id":
-					db.Model(&entity.User{}).Where("id = ?", "fixture-user").Update("id", "")
+					requireCEWrite(t, db.Model(&entity.User{}).Where("id = ?", "fixture-user").Update("id", ""))
 				}
 				tenant := ""
 				if signed {
@@ -257,10 +267,10 @@ func TestCENativeTenantRecheckPreservesOriginalMode(t *testing.T) {
 						want = ErrUserTokenUnverified
 					}
 				case "replace-A-with-B":
-					db.Model(&entity.UserTenant{}).Where("id = ?", "fixture-member").Update("status", entity.TenantMembershipStatusLeft)
+					requireCEWrite(t, db.Model(&entity.UserTenant{}).Where("id = ?", "fixture-member").Update("status", entity.TenantMembershipStatusLeft))
 					addCEFixtureMembership(t, db, "other-member", "other-tenant", &active, &active, true)
 				case "promote-admin":
-					db.Model(&entity.User{}).Where("id = ?", "fixture-user").Update("is_superuser", true)
+					requireCEWrite(t, db.Model(&entity.User{}).Where("id = ?", "fixture-user").Update("is_superuser", true))
 				}
 				err = v.CheckCurrentIdentity(t.Context(), identity)
 				if !errors.Is(err, want) {
@@ -303,5 +313,50 @@ func TestCENativeTenantCancellationBeforeRead(t *testing.T) {
 	proof, err := v.VerifyUserToken(ctx, token, 0)
 	if !errors.Is(err, ErrUserTokenUnverified) || proof.proof != nil {
 		t.Fatalf("cancelled authority accepted: %v", err)
+	}
+}
+
+func TestCENativeTenantNeverSynthesizesPersonalMembership(t *testing.T) {
+	v, db, _ := newIdentityFixture(t)
+	requireCEWrite(t, db.Where("user_id = ?", "fixture-user").Delete(&entity.UserTenant{}))
+	active := "1"
+	requireCEWrite(t, db.Create(&entity.Tenant{ID: "fixture-user", Status: &active}))
+	assertCEIdentityError(t, v, ceFixtureToken(t, ""), ErrUserTokenUnverified)
+	assertCEIdentityError(t, v, ceFixtureToken(t, "fixture-user"), ErrUserTokenDenied)
+	var count int64
+	requireCEWrite(t, db.Model(&entity.UserTenant{}).Where("user_id = ?", "fixture-user").Count(&count))
+	if count != 0 {
+		t.Fatal("strict verification created a membership")
+	}
+}
+
+func TestCENativeTenantMissingObserverAndDatabase(t *testing.T) {
+	for _, stage := range []string{"observer", "database"} {
+		t.Run(stage, func(t *testing.T) {
+			v, _, token := newIdentityFixture(t)
+			if stage == "observer" {
+				v.source.observe = nil
+			} else {
+				v.source.db = func() *gorm.DB { return nil }
+			}
+			assertCEIdentityError(t, v, token, ErrUserTokenUnverified)
+		})
+	}
+}
+
+func TestCENativeTenantMalformedStatusDoesNotBecomeJoined(t *testing.T) {
+	for _, field := range []string{"membership", "tenant"} {
+		for _, state := range []string{"1 ", " 1", "01"} {
+			t.Run(field+"-"+state, func(t *testing.T) {
+				v, db, _ := newIdentityFixture(t)
+				if field == "membership" {
+					requireCEWrite(t, db.Model(&entity.UserTenant{}).Where("id = ?", "fixture-member").Update("status", state))
+				} else {
+					requireCEWrite(t, db.Model(&entity.Tenant{}).Where("id = ?", "fixture-tenant").Update("status", state))
+				}
+				assertCEIdentityError(t, v, ceFixtureToken(t, ""), ErrUserTokenUnverified)
+				assertCEIdentityError(t, v, ceFixtureToken(t, "fixture-tenant"), ErrUserTokenUnverified)
+			})
+		}
 	}
 }

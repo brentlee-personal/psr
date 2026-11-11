@@ -13,9 +13,11 @@ import (
 
 // NativeUserIdentityObservation is the bounded result of one read-only native
 // database statement. It contains no credential and never selects a default.
+// The raw token read remains private; only its exact-match boolean is returned.
 // Counts/evidence cover all relevant rows, not just the two returned candidates.
 type NativeUserIdentityObservation struct {
 	UserCount           int64
+	CurrentTokenMatches bool
 	User                *entity.User
 	TenantIDs           []string
 	UnknownState        bool
@@ -30,6 +32,7 @@ type NativeUserIdentityObservation struct {
 func (*UserTenantDAO) ObserveNativeUserIdentity(ctx context.Context, db *gorm.DB, accessToken, signedTenantID string) (NativeUserIdentityObservation, error) {
 	var rows []struct {
 		UserCount           int64
+		CurrentAccessToken  *string
 		UserID              *string
 		UserStatus          *string
 		IsActive            *string
@@ -44,7 +47,7 @@ func (*UserTenantDAO) ObserveNativeUserIdentity(ctx context.Context, db *gorm.DB
 	// The LIMIT in token_users only distinguishes zero/one/multiple users. The
 	// candidate LIMIT follows full-set anomaly aggregation and never hides it.
 	query := metadataSQL(db, `WITH token_users AS (
- SELECT id, status, is_active, is_superuser FROM `+metadataIdentifier(db, "user")+` WHERE access_token = ? LIMIT 2
+ SELECT id, access_token, status, is_active, is_superuser FROM `+metadataIdentifier(db, "user")+` WHERE access_token = ? LIMIT 2
 ), membership_rows AS (
  SELECT m.id, m.tenant_id, m.status AS membership_status,
         t.id AS tenant_row_id, t.status AS tenant_status,
@@ -54,9 +57,9 @@ func (*UserTenantDAO) ObserveNativeUserIdentity(ctx context.Context, db *gorm.DB
  WHERE (? = '' OR m.tenant_id = ?)
 ), evidence AS (
  SELECT COALESCE(MAX(CASE WHEN id IS NULL OR id = '' OR tenant_id IS NULL OR tenant_id = ''
-   OR membership_status IS NULL OR membership_status NOT IN ('0','1','2','3','4','5')
+   OR membership_status IS NULL OR LENGTH(membership_status) <> 1 OR membership_status NOT IN ('0','1','2','3','4','5')
    OR (membership_status = '1' AND tenant_row_id IS NOT NULL
-       AND (tenant_status IS NULL OR tenant_status NOT IN ('0','1')))
+       AND (tenant_status IS NULL OR LENGTH(tenant_status) <> 1 OR tenant_status NOT IN ('0','1')))
    THEN 1 ELSE 0 END), 0) AS unknown_state,
    COALESCE(MAX(CASE WHEN pair_count > 1 THEN 1 ELSE 0 END), 0) AS duplicate_membership,
    COALESCE(MAX(CASE WHEN membership_status = '1' AND tenant_row_id IS NULL THEN 1 ELSE 0 END), 0) AS orphan_membership
@@ -66,7 +69,7 @@ func (*UserTenantDAO) ObserveNativeUserIdentity(ctx context.Context, db *gorm.DB
  WHERE membership_status = '1' AND tenant_status = '1' AND tenant_row_id IS NOT NULL
  LIMIT 2
 )
-SELECT n.user_count, u.id AS user_id, u.status AS user_status, u.is_active, u.is_superuser,
+SELECT n.user_count, u.id AS user_id, u.access_token AS current_access_token, u.status AS user_status, u.is_active, u.is_superuser,
        e.unknown_state, e.duplicate_membership, e.orphan_membership, c.tenant_id
  FROM (SELECT COUNT(*) AS user_count FROM token_users) n
  LEFT JOIN token_users u ON n.user_count = 1
@@ -82,6 +85,7 @@ SELECT n.user_count, u.id AS user_id, u.status AS user_status, u.is_active, u.is
 	first := rows[0]
 	observation := NativeUserIdentityObservation{
 		UserCount:           first.UserCount,
+		CurrentTokenMatches: first.CurrentAccessToken != nil && *first.CurrentAccessToken == accessToken,
 		UnknownState:        first.UnknownState != 0,
 		DuplicateMembership: first.DuplicateMembership != 0,
 		OrphanMembership:    first.OrphanMembership != 0,
