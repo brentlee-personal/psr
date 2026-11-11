@@ -21,8 +21,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"math"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/cloudwego/eino/components/model"
@@ -551,6 +553,45 @@ func TestExeSQL_ExecuteSelect_NormalizesTimeAndBytes(t *testing.T) {
 	// staying as []byte.
 	if _, isBytes := got.Rows[0]["blob_col"].([]byte); isBytes {
 		t.Error("blob_col came back as []byte; exesqlNormalizeCell should convert to string")
+	}
+}
+
+func TestExeSQL_SharedReaderPreservesPresentation(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	ts := time.Date(2026, 11, 11, 13, 42, 31, 987654321, time.UTC)
+	mock.ExpectQuery("SELECT presentation").WillReturnRows(sqlmock.NewRows([]string{"duplicate", "duplicate", "ts", "nan", "inf"}).AddRow("first", []byte("last"), ts, math.NaN(), math.Inf(1)).AddRow("unretained", []byte("extra"), ts, 1.0, 2.0)).RowsWillBeClosed()
+	cols, rows, err := exesqlQueryOne(t.Context(), db, "SELECT presentation", 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cols) != 5 || cols[0] != cols[1] || len(rows) != 1 {
+		t.Fatal("schema/row limit changed")
+	}
+	if rows[0]["duplicate"] != "last" || rows[0]["ts"] != "2026-11-11" || rows[0]["nan"] != nil || rows[0]["inf"] != nil {
+		t.Fatal("model-tool presentation changed")
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestExeSQL_SharedReaderPreservesIgnoredEarlyCloseError(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	mock.ExpectQuery("SELECT limited").WillReturnRows(sqlmock.NewRows([]string{"x"}).AddRow(1).AddRow(2).CloseError(errors.New("old close error"))).RowsWillBeClosed()
+	_, rows, err := exesqlQueryOne(t.Context(), db, "SELECT limited", 1)
+	if err != nil || len(rows) != 1 {
+		t.Fatal("early-close behavior changed")
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatal(err)
 	}
 }
 
