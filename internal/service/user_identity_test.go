@@ -227,3 +227,67 @@ func TestStrictNativeUserIdentitySuppressesTokenSQLLogs(t *testing.T) {
 		t.Fatal("access token leaked in SQL logger")
 	}
 }
+
+func TestStrictNativeUserIdentityRejectsExpiryDuringStateRead(t *testing.T) {
+	v, _, token := newIdentityFixture(t)
+	// A two-second policy ensures the initial verification enters the hook.
+	// The hook waits just past that same authenticated deadline.
+	parts := strings.Split(token, ".")
+	issued, _ := strconv.ParseInt(parts[3], 10, 64)
+	deadline := time.Unix(issued, 0).Add(2 * time.Second)
+	entered := false
+	v.source.tenant = func(_ context.Context, _ *entity.User, tenant string) (string, error) {
+		entered = true
+		time.Sleep(time.Until(deadline) + 10*time.Millisecond)
+		return tenant, nil
+	}
+	if _, err := v.VerifyUserToken(t.Context(), token, 2*time.Second); !errors.Is(err, ErrUserTokenDenied) {
+		t.Fatalf("expired after state I/O: %v", err)
+	}
+	if !entered {
+		t.Fatal("did not exercise authority delay")
+	}
+}
+
+func TestStrictNativeUserIdentityRejectsCancellationDuringStateRead(t *testing.T) {
+	v, _, token := newIdentityFixture(t)
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	v.source.tenant = func(_ context.Context, _ *entity.User, tenant string) (string, error) { cancel(); return tenant, nil }
+	if _, err := v.VerifyUserToken(ctx, token, 30*time.Minute); !errors.Is(err, ErrUserTokenUnverified) {
+		t.Fatalf("cancelled after state I/O: %v", err)
+	}
+}
+
+func TestStrictNativeUserIdentityRechecksKeyAndAge(t *testing.T) {
+	t.Run("key-rotation", func(t *testing.T) {
+		v, _, token := newIdentityFixture(t)
+		proof, err := v.VerifyUserToken(t.Context(), token, 30*time.Minute)
+		if err != nil {
+			t.Fatal(err)
+		}
+		v.source.secret = func(context.Context) (string, error) { return "rotated-synthetic-authority", nil }
+		if err := v.CheckCurrentIdentity(t.Context(), proof); !errors.Is(err, ErrUserTokenDenied) {
+			t.Fatalf("rotated key accepted: %v", err)
+		}
+	})
+	t.Run("empty-key", func(t *testing.T) {
+		v, _, token := newIdentityFixture(t)
+		v.source.secret = func(context.Context) (string, error) { return "", nil }
+		if _, err := v.VerifyUserToken(t.Context(), token, 0); !errors.Is(err, ErrUserTokenUnverified) {
+			t.Fatal("empty key accepted")
+		}
+	})
+	t.Run("negative-age", func(t *testing.T) {
+		v, _, token := newIdentityFixture(t)
+		if _, err := v.VerifyUserToken(t.Context(), token, -time.Second); !errors.Is(err, ErrUserTokenDenied) {
+			t.Fatal("negative maxAge accepted")
+		}
+	})
+	t.Run("subsecond-expiry", func(t *testing.T) {
+		v, _, token := newIdentityFixture(t)
+		if _, err := v.VerifyUserToken(t.Context(), token, time.Nanosecond); !errors.Is(err, ErrUserTokenDenied) {
+			t.Fatal("subsecond expired policy accepted")
+		}
+	})
+}

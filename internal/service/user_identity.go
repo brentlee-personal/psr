@@ -165,6 +165,16 @@ func (v *UserTokenVerifier) VerifyUserToken(ctx context.Context, authorization s
 		return VerifiedUserIdentity{}, ErrUserTokenDenied
 	}
 
+	// Authority reads may block past the deadline or ignore cancellation. Only
+	// the completion time can establish a currently usable identity.
+	if ctx.Err() != nil {
+		return VerifiedUserIdentity{}, ErrUserTokenUnverified
+	}
+	now = time.Now().UTC()
+	if !now.Before(expiry) {
+		return VerifiedUserIdentity{}, ErrUserTokenDenied
+	}
+
 	return VerifiedUserIdentity{
 		snapshot: UserIdentitySnapshot{UserID: identity.User.ID, TenantID: identity.TenantID, AuthType: "native_user_token", IssuedAt: token.IssuedAt, ExpiresAt: expiry, CheckedAt: now},
 		proof:    &userTokenProof{issuer: v, authorization: authorization, maxAge: maxAge},
