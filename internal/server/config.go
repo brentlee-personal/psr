@@ -340,11 +340,17 @@ func PrintAll() {
 }
 
 func maskConfigCredentials(value any) any {
+	return maskConfigCredentialsInSection(value, "")
+}
+
+func maskConfigCredentialsInSection(value any, section string) any {
 	switch value := value.(type) {
 	case map[string]any:
 		settings := make(map[string]any, len(value))
 		for key, child := range value {
-			if _, sensitive := sensitiveConfigKeys[strings.ToLower(key)]; sensitive {
+			// MinIO calls its S3 access-key ID "user"; other user fields are safe.
+			minioAccessKey := strings.EqualFold(section, "minio") && strings.EqualFold(key, "user")
+			if _, sensitive := sensitiveConfigKeys[strings.ToLower(key)]; sensitive || minioAccessKey {
 				settings[key] = "******"
 				continue
 			}
@@ -352,13 +358,13 @@ func maskConfigCredentials(value any) any {
 				settings[key] = common.RedactURLUserInfo(host)
 				continue
 			}
-			settings[key] = maskConfigCredentials(child)
+			settings[key] = maskConfigCredentialsInSection(child, key)
 		}
 		return settings
 	case []any:
 		settings := make([]any, len(value))
 		for i, child := range value {
-			settings[i] = maskConfigCredentials(child)
+			settings[i] = maskConfigCredentialsInSection(child, section)
 		}
 		return settings
 	case string:
