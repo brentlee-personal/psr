@@ -32,8 +32,8 @@ if [[ "$(go env GOOS)" != "linux" ]]; then
     exit 1
 fi
 
-if [[ -n "$(git -C "$ROOT" status --porcelain)" ]]; then
-    echo "error: build from a clean git worktree so the artifact maps to one source commit" >&2
+if [[ -n "$(git -C "$ROOT" status --porcelain --untracked-files=no)" ]]; then
+    echo "error: tracked source changes prevent mapping the artifact to one commit" >&2
     exit 1
 fi
 

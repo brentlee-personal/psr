@@ -24,6 +24,14 @@ jobs:
       - name: Trust the mounted checkout
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
+      - name: Verify clean source checkout
+        run: |
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo "error: expected a clean checkout before preparing build dependencies" >&2
+            git status --short
+            exit 1
+          fi
+
       - name: Install uv
         uses: astral-sh/setup-uv@v5
 
