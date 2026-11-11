@@ -1,0 +1,35 @@
+> **Desc**: Restricted PostgreSQL AST analysis contract and explicit execution-authorization boundary.
+> **Input**: BRE-274 shared Go parser integration and synthetic counterexample review.
+> **Output**: Supported syntax, trusted policy inputs, remaining authoritative binding requirements.
+> **Position**: `internal/readonly/sqlguard/README.md` — shared parser capability slice.
+> **Upstream**: BRE-274; approved ToB design §6.1/6.2 (read-only); PSR AGENTS.md.
+> **Downstream**: Shared read-only guard and executor owners; ToB consumers after source approval.
+> **Last-verified**: 2026-11-11 (source contract only; real data plane, authorization and deployment UNVERIFIED).
+
+# AST analysis is available separately from execution approval
+
+`Analyze(ctx, sql, Policy)` parses SQL and checks the supported syntax and supplied catalog policy without database calls. Its result is an `Analysis`, never an `ApprovedQuery`. There is no public request route, execution adapter, identity substitute, or default data binding. Synthetic fixtures establish parser rejection behavior; they do not establish real read-only privileges, tenant isolation, or business acceptance.
+
+The implementation pins [pganalyze/pg_query_go v6.2.5](https://github.com/pganalyze/pg_query_go/tree/v6.2.5), upstream commit `7ac09d4bd830e591a69c6ebc756bb8f71de0281e`. Its [Parse API](https://github.com/pganalyze/pg_query_go/blob/v6.2.5/pg_query.go) calls the actual PostgreSQL parser through CGO; its typed [AST definitions](https://github.com/pganalyze/pg_query_go/blob/v6.2.5/pg_query.pb.go) are traversed with closed node dispatch. No SQL text splitting, regex approval, custom SQL parser, Python, or SQLGlot runtime is used.
+
+Only the explicit `postgresql` parser capability is implemented. This does not select the business data protocol: the actual target source, dialect and execution service remain UNKNOWN. The shared guard owner must select an appropriate parser after the data owner resolves the authoritative binding. An empty or other dialect returns `ErrUnverified`; SQL cannot select a dialect. A matching string alone does not establish that a target is PostgreSQL.
+
+The policy is internal trusted-server input, never client/model JSON. It lists exact schema-qualified relations, readable columns, and exact `pg_catalog` function names independently verified read-only by the policy owner. An explicitly empty function map permits no functions; missing maps are unverified. `Complete` may be true only when an authoritative catalog confirms that every column exposed by the relation is authorized. A subset grant never authorizes `*`. Aliases and derived columns retain physical column origins. All CTEs (including unused ones), joins, nested expressions and subqueries are checked. Correlated references use the nearest scope; unknown and ambiguous references fail closed. The exact original SQL bytes are hashed. Neither this hash nor the caller-constructible analysis is an authorization token.
+
+Supported grammar is deliberately narrow: one SELECT, sequential nonrecursive WITH SELECT, explicitly schema-qualified relations, aliases, derived subqueries, explicit INNER/LEFT/RIGHT/FULL joins with ON, scalar/EXISTS subqueries, column references, constants, basic comparison/arithmetic, boolean/null checks, explicit policy functions and aggregate FILTER, GROUP/HAVING/ORDER/LIMIT expressions. Unqualified physical relations and functions, casts, parameters, DISTINCT, set operations, windows, lateral/recursive queries, USING/natural joins, column-renaming lists, and all unrecognized nodes are rejected. Complex derived expressions require explicit unique aliases when used as a relation. Wildcards expand only an entirely known authorized projection. SQL is bounded to 64 KiB, 4096 visited nodes and depth 64; cancellation is checked before and after native parsing and during traversal. Native parsing is synchronous and cannot be interrupted mid-call. The result lists referenced relations/functions and projected column origins, not full predicate-level semantic lineage.
+
+`ErrRejected` means unsafe SQL, unsupported grammar or a name outside the supplied policy. `ErrUnverified` means missing/unsupported/invalid policy input. Errors do not embed SQL, function arguments or parser diagnostics. No result is returned on failure.
+
+# Inputs still required before a real execution guard can approve
+
+| Resource | Required method/evidence | Required schema | Owner |
+| --- | --- | --- | --- |
+| Current identity and scope | Approved shared identity verifier and current-state recheck | Immutable verified identity, tenant, grant subject/scope, expiry, version | BRE-273/shared source coordinator; implementation exists on an uncombined candidate |
+| Actual data source | Resolve a trusted source reference through the existing authorized provider | Source ID/version, actual dialect/protocol, exact relation/column catalog, non-secret execution identity reference | Data-plane owner; concrete provider and owner not yet confirmed |
+| Function/operator/type resolution | Verify actual callable semantics, overloads, search path and execution privileges | Fully resolved function/operator/type identities and policy version | Database/policy owner; authoritative provider not yet confirmed |
+| Scope enforcement | Read back restricted view, RLS or equivalent service enforcement for every referenced relation and current principal | Grant source/version, view/RLS/service ID, exact scope, read-only permission evidence and deadline | Data-plane/grant owner; concrete resource/method not yet confirmed |
+| Execution approval | Recheck all above and bind the final SQL/source/subject/scope/policy/limits/earliest deadline | Unforgeable internal ApprovedQuery; executor revalidation/invalidation on any change | BRE-274/275 owners after approved common-source assembly |
+
+AST name resolution is deliberately conservative and is not PostgreSQL catalog/type resolution. Operators, implicit casts, overloads, search path, inherited relations and function internals need real execution-policy evidence. Restricting SQL names or supplying a `Complete` flag cannot prove those semantics or enforce merchant/store scope. Do not issue approval by adding an outer WHERE or searching for scope text. Unknown authorization, policy or data-source state must remain unverified. The actual execution surface must independently deny writes, external/file/network access and out-of-scope reads. No production mapping, business allowlist, database account or scope proof is invented in this module.
+
+The authn-dependent approval API remains unassembled until the common source gate approves a composable baseline. BRE-273 is neither copied nor stubbed. Real database privileges, real business source/protocol, enterprise build/runtime, ACK and deployment are NOT_RUN.
