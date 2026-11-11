@@ -90,9 +90,11 @@ func (dao *API4ConversationDAO) UpdateHistory(ctx context.Context, db *gorm.DB, 
 func (dao *API4ConversationDAO) Stats(ctx context.Context, db *gorm.DB, tenantID, fromDate, toDate string, source *string) ([]ConversationStatsRow, error) {
 	var rows []ConversationStatsRow
 	dateExpr := "DATE_FORMAT(a.create_date, '%Y-%m-%d 00:00:00')"
+	if isPostgreSQLMetaDB(db) {
+		dateExpr = "to_char(a.create_date, 'YYYY-MM-DD 00:00:00')"
+	}
 	query := db.WithContext(ctx).Table("api_4_conversation AS a").
-		Select(`
-			DATE_FORMAT(a.create_date, '%Y-%m-%d 00:00:00') AS dt,
+		Select(dateExpr+` AS dt,
 			COUNT(a.id) AS pv,
 			COUNT(DISTINCT a.user_id) AS uv,
 			COALESCE(SUM(a.tokens), 0) AS tokens,

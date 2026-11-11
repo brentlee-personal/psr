@@ -35,7 +35,7 @@ import (
 	// matching the document engine's client; the import registers the
 	// database/sql driver regardless of which engines the binary links in,
 	// and autoMigrateSafely classifies its error type.
-	"github.com/lib/pq"
+	_ "github.com/lib/pq"
 	gormLogger "gorm.io/gorm/logger"
 
 	"gorm.io/driver/mysql"
@@ -317,6 +317,11 @@ func InitDB(ctx context.Context, migrateDB bool) error {
 	var dialector gorm.Dialector
 	var maxConnections, staleTimeout int
 	switch globalConfig.DatabaseType() {
+	case "postgres":
+		postgresConfig := globalConfig.GetPostgreSQLConfig()
+		dialector = newPostgreSQLDialector(postgresConfig)
+		maxConnections = postgresConfig.MaxConnections
+		staleTimeout = postgresConfig.StaleTimeout
 	case "vastbase":
 		vastbaseConfig := globalConfig.GetVastbaseMetaConfig()
 		dialector = newVastbaseDialector(vastbaseConfig)
@@ -369,6 +374,23 @@ func InitDB(ctx context.Context, migrateDB bool) error {
 	sqlDB.SetMaxOpenConns(maxConnections)
 	sqlDB.SetConnMaxLifetime(time.Duration(staleTimeout) * time.Second)
 
+	if err = migrateMetadataSchema(ctx, DB, migrateDB); err != nil {
+		return err
+	}
+
+	err = models.InitProviderManager("conf/models")
+	if err != nil {
+		common.Fatal("Failed to load model providers", zap.Error(err))
+	}
+
+	common.Info("Model providers loaded successfully")
+
+	return nil
+}
+
+// migrateMetadataSchema is shared by startup and real database integration tests.
+func migrateMetadataSchema(ctx context.Context, DB *gorm.DB, migrateDB bool) error {
+	var err error
 	// Auto migrate all dataModels
 	dataModels := autoMigrateModels()
 
@@ -392,6 +414,12 @@ func InitDB(ctx context.Context, migrateDB bool) error {
 		for _, m := range dataModels {
 			if err = autoMigrateSafely(ctx, DB, m); err != nil {
 				return fmt.Errorf("failed to migrate model %T: %w", m, err)
+			}
+		}
+
+		if isPostgreSQLMetaDB(DB) {
+			if err = ensurePostgreSQLMetadataConstraints(ctx, DB); err != nil {
+				return err
 			}
 		}
 
@@ -487,13 +515,6 @@ func InitDB(ctx context.Context, migrateDB bool) error {
 	}
 	common.Info("Database connected and migrated successfully")
 
-	err = models.InitProviderManager("conf/models")
-	if err != nil {
-		common.Fatal("Failed to load model providers", zap.Error(err))
-	}
-
-	common.Info("Model providers loaded successfully")
-
 	return nil
 }
 
@@ -558,15 +579,14 @@ func autoMigrateSafely(ctx context.Context, db *gorm.DB, model interface{}) erro
 // isPostgresDuplicateObjectErr reports whether err is one of the
 // PostgreSQL-wire SQLSTATEs that mean "the schema object AutoMigrate tried
 // to create already exists": 42P07 (relation), 42701 (column) and 42710
-// (constraint/object). The metadata connection speaks lib/pq, and gorm's
-// postgres error translator maps only 23505/23503/42703, so these driver
-// errors reach this check intact.
+// (constraint/object). Both the native pgx driver and Vastbase lib/pq driver
+// expose SQLState; these convergence codes survive GORM error translation.
 func isPostgresDuplicateObjectErr(err error) bool {
-	var pqErr *pq.Error
-	if !errors.As(err, &pqErr) {
+	var pgErr interface{ SQLState() string }
+	if !errors.As(err, &pgErr) {
 		return false
 	}
-	switch pqErr.Code {
+	switch pgErr.SQLState() {
 	case "42P07", "42701", "42710":
 		return true
 	}

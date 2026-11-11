@@ -55,6 +55,10 @@ func (dao *TimeRecordDAO) GetCount(ctx context.Context, db *gorm.DB) (int64, err
 
 // DeleteOldest removes the oldest records (smallest ID) with limit
 func (dao *TimeRecordDAO) DeleteOldest(ctx context.Context, db *gorm.DB, limit int64) error {
+	if isPostgreSQLMetaDB(db) {
+		return db.WithContext(ctx).Exec("DELETE FROM time_records WHERE id IN (SELECT id FROM time_records ORDER BY id ASC LIMIT ?)", limit).Error
+	}
+
 	return db.WithContext(ctx).Exec("DELETE FROM time_records ORDER BY id ASC LIMIT ?", limit).Error
 }
 
