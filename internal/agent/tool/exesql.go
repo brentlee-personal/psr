@@ -61,6 +61,7 @@ import (
 	_ "github.com/lib/pq"
 
 	"ragflow/internal/agent/runtime"
+	"ragflow/internal/readonly/sqlresult"
 )
 
 // ExeSQL-specific errors. ErrExeSQLDAOMissing is surfaced when
@@ -467,38 +468,21 @@ func exesqlExecute(ctx context.Context, db *sql.DB, sqlText, dbType string, maxR
 // Rows are returned as column→value maps with `time.Time` flattened
 // to "YYYY-MM-DD" (Python pandas `.dt.strftime('%Y-%m-%d')` parity).
 func exesqlQueryOne(ctx context.Context, db *sql.DB, stmt string, maxRows int) ([]string, []map[string]any, error) {
-	rows, err := db.QueryContext(ctx, stmt)
+	result, err := sqlresult.QueryLegacy(ctx, db, stmt, maxRows)
 	if err != nil {
 		return nil, nil, err
 	}
-	defer rows.Close()
-
-	cols, err := rows.Columns()
-	if err != nil {
-		return nil, nil, err
+	cols := make([]string, len(result.Columns))
+	for i, column := range result.Columns {
+		cols[i] = column.Name
 	}
-
 	out := make([]map[string]any, 0, 16)
-	for rows.Next() {
-		if len(out) >= maxRows {
-			break
-		}
-		raw := make([]any, len(cols))
-		ptrs := make([]any, len(cols))
-		for i := range raw {
-			ptrs[i] = &raw[i]
-		}
-		if err := rows.Scan(ptrs...); err != nil {
-			return nil, nil, err
-		}
+	for _, raw := range result.Rows {
 		row := make(map[string]any, len(cols))
 		for i, c := range cols {
 			row[c] = exesqlNormalizeCell(raw[i])
 		}
 		out = append(out, row)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, nil, err
 	}
 	return cols, out, nil
 }
