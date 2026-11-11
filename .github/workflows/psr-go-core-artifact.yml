@@ -179,7 +179,7 @@ jobs:
           test "$(git -C control rev-parse HEAD)" = "$GITHUB_SHA"
           output="$RUNNER_TEMP/psr-dependencies-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
           mkdir -p "$output/logs"
-          sudo -n docker run --rm --runtime=runc --user 0:0 --env HOME=/root --read-only \
+          sudo -n docker run --rm --runtime=runc --user "$(id -u):$(id -g)" --env HOME=/tmp --read-only \
             --cpus=2 --cpuset-cpus=4,5 --memory=2g --pids-limit=128 --network=host \
             --env GOTOOLCHAIN=local --env GOCACHE=/tmp/gocache \
             --env HTTPS_PROXY=http://127.0.0.1:7897 --env HTTP_PROXY=http://127.0.0.1:7897 \
