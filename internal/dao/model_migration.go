@@ -1288,6 +1288,11 @@ func normalizeModelIDJSONColumn(ctx context.Context, db *gorm.DB, table, column 
 		Value sql.NullString `gorm:"column:value"`
 	}
 	query := fmt.Sprintf(metadataSQL(db, "SELECT id AS id, `%s` AS value FROM `%s` WHERE `%s` IS NOT NULL AND `%s` != ''"), column, table, column, column)
+	if isPostgreSQLMetaDB(db) {
+		name := metadataIdentifier(db, column)
+		query = fmt.Sprintf("SELECT id AS id, %s AS value FROM %s WHERE %s IS NOT NULL AND CAST(%s AS text) != ''", name, metadataIdentifier(db, table), name, name)
+	}
+
 	if err := db.Raw(metadataSQL(db, query)).Scan(&rows).Error; err != nil {
 		return err
 	}

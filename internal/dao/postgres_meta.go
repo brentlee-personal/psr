@@ -19,6 +19,7 @@ package dao
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 	"unicode"
 
@@ -161,7 +162,23 @@ func postgresKnowledgebaseNameUnique(ctx context.Context, db *gorm.DB) error {
  GENERATED ALWAYS AS (CASE WHEN status = '1' THEN lower(name) ELSE NULL END) STORED`).Error; err != nil {
 		return err
 	}
-	return db.WithContext(ctx).Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_kb_tenant_name_ci ON knowledgebase (tenant_id,name_ci)`).Error
+	var column struct {
+		IsGenerated            string
+		GenerationExpression   string
+		DataType               string
+		CharacterMaximumLength int
+	}
+	if err := db.WithContext(ctx).Raw(`SELECT is_generated,generation_expression,data_type,character_maximum_length
+ FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='knowledgebase' AND column_name='name_ci'`).Scan(&column).Error; err != nil {
+		return err
+	}
+	expression := strings.ToLower(column.GenerationExpression)
+	expression = strings.ReplaceAll(expression, "::text", "")
+	expression = regexp.MustCompile(`[\s()]`).ReplaceAllString(expression, "")
+	if column.IsGenerated != "ALWAYS" || column.DataType != "character varying" || column.CharacterMaximumLength != 128 || expression != "casewhenstatus='1'thenlowernameelsenullend" {
+		return fmt.Errorf("PostgreSQL knowledgebase.name_ci has an incompatible generated column definition")
+	}
+	return addUniqueIndex(ctx, db, "knowledgebase", "idx_kb_tenant_name_ci", []string{"tenant_id", "name_ci"})
 }
 
 func postgresHasUniqueIndex(ctx context.Context, db *gorm.DB, table string, columns []string) (bool, error) {

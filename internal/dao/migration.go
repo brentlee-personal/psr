@@ -664,7 +664,7 @@ func migrateUserCanvasTitleUnique(ctx context.Context, db *gorm.DB) error {
 		if !db.WithContext(ctx).Migrator().HasTable("user_canvas") {
 			return nil
 		}
-		return db.WithContext(ctx).Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_user_canvas_user_category_title ON user_canvas (user_id,canvas_category,title)").Error
+		return addUniqueIndex(ctx, db, "user_canvas", "idx_user_canvas_user_category_title", []string{"user_id", "canvas_category", "title"})
 	}
 
 	if !db.WithContext(ctx).Migrator().HasTable("user_canvas") {

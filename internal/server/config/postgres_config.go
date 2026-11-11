@@ -64,3 +64,11 @@ func (c *Config) parsePostgreSQLConfig(v *viper.Viper) error {
 }
 
 func (c *Config) GetPostgreSQLConfig() PostgreSQLConfig { return c.database.Postgres }
+
+// ExportConfigs follows the existing superuser-only database inspection
+// contract. PrintAll masks the password key before any configuration logging.
+func (c *PostgreSQLConfig) ExportConfigs() map[string]interface{} {
+	return map[string]interface{}{"database_name": c.DatabaseName, "username": c.User,
+		"password": c.Password, "host": c.Host, "port": c.Port, "ssl_mode": c.SSLMode,
+		"max_connections": c.MaxConnections, "stale_timeout": c.StaleTimeout}
+}
