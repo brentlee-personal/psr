@@ -50,6 +50,9 @@ func (d postgresMetaDialector) DataTypeOf(field *schema.Field) string {
 }
 func (d postgresMetaDialector) Migrator(db *gorm.DB) gorm.Migrator {
 	m := d.Dialector.Migrator(db).(postgres.Migrator)
+	// The driver binds its own concrete dialector when creating a migrator.
+	// Rebind it so FullDataTypeOf and AutoMigrate use our native type mapping.
+	m.Migrator.Config.Dialector = d
 	return postgresMetaMigrator{Migrator: m}
 }
 func (m postgresMetaMigrator) MigrateColumnUnique(dst interface{}, field *schema.Field, columnType gorm.ColumnType) error {

@@ -58,6 +58,8 @@ func TestPostgreSQLMetadataIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatal("open test target")
 	}
+	probe.SetMaxOpenConns(1)
+	probe.SetMaxIdleConns(0)
 	defer probe.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
@@ -84,13 +86,43 @@ func TestPostgreSQLMetadataIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer pool.Close()
-	pool.SetMaxOpenConns(3)
+	pool.SetMaxOpenConns(2)
+	pool.SetMaxIdleConns(1)
 	t.Run("initialize_and_repeat_migrations", func(t *testing.T) {
 		for i := 0; i < 2; i++ {
 			if err := migrateMetadataSchema(ctx, db, true); err != nil {
 				t.Fatalf("migration pass %d: %v", i+1, err)
 			}
 		}
+		if err := db.WithContext(ctx).AutoMigrate(&postgresStorageAnnotations{}); err != nil {
+			t.Fatalf("storage annotations: %v", err)
+		}
+		var columns []struct {
+			TableName  string
+			ColumnName string
+			DataType   string
+		}
+		if err := db.WithContext(ctx).Raw(`SELECT table_name,column_name,data_type FROM information_schema.columns
+ WHERE table_schema=current_schema() AND table_name IN ('postgres_storage_annotations','user','knowledgebase')`).Scan(&columns).Error; err != nil {
+			t.Fatal(err)
+		}
+		actualTypes := make(map[string]string, len(columns))
+		for _, column := range columns {
+			actualTypes[column.TableName+"."+column.ColumnName] = column.DataType
+		}
+		expectedTypes := map[string]string{
+			"postgres_storage_annotations.long_text": "text", "postgres_storage_annotations.medium_text": "text", "postgres_storage_annotations.tiny_text": "text",
+			"postgres_storage_annotations.date_time": "timestamp with time zone", "postgres_storage_annotations.tiny_int": "smallint",
+			"postgres_storage_annotations.blob": "bytea", "postgres_storage_annotations.long_blob": "bytea", "postgres_storage_annotations.medium_blob": "bytea", "postgres_storage_annotations.tiny_blob": "bytea",
+			"postgres_storage_annotations.json": "json", "postgres_storage_annotations.boolean": "boolean",
+			"user.avatar": "text", "user.is_superuser": "boolean", "knowledgebase.parser_config": "json", "knowledgebase.raptor_task_finish_at": "timestamp with time zone",
+		}
+		for column, want := range expectedTypes {
+			if got := actualTypes[column]; got != want {
+				t.Errorf("catalog %s=%q, want %q", column, got, want)
+			}
+		}
+		t.Logf("native storage catalog: checked=%d", len(expectedTypes))
 	})
 	if t.Failed() {
 		return
@@ -281,6 +313,8 @@ func TestPostgreSQLMetadataIntegration(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			pool.SetMaxOpenConns(1)
+			pool.SetMaxIdleConns(0)
 			t.Cleanup(func() { pool.Close() })
 			return fixture
 		}
@@ -298,6 +332,13 @@ func TestPostgreSQLMetadataIntegration(t *testing.T) {
 		var count int64
 		if err := badColumn.Table("knowledgebase").Count(&count).Error; err != nil || count != 2 {
 			t.Fatal("constraint rejection changed existing rows")
+		}
+		columnPool, err := badColumn.DB()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := columnPool.Close(); err != nil {
+			t.Fatal(err)
 		}
 		badIndex := openFixture("_index")
 		if err := badIndex.Exec(`CREATE TABLE knowledgebase(id text,tenant_id text,name text,status text,

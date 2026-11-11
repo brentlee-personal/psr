@@ -33,14 +33,32 @@ func openPostgreSQLMetaForSQL(t *testing.T) *gorm.DB {
 	}
 	return db
 }
+
+type postgresStorageAnnotations struct {
+	LongText   string         `gorm:"type:longtext"`
+	MediumText string         `gorm:"type:mediumtext"`
+	TinyText   string         `gorm:"type:tinytext"`
+	DateTime   time.Time      `gorm:"type:datetime"`
+	TinyInt    int8           `gorm:"type:tinyint"`
+	Blob       []byte         `gorm:"type:blob"`
+	LongBlob   []byte         `gorm:"type:longblob"`
+	MediumBlob []byte         `gorm:"type:mediumblob"`
+	TinyBlob   []byte         `gorm:"type:tinyblob"`
+	JSON       entity.JSONMap `gorm:"type:json"`
+	Boolean    bool
+}
+
 func TestPostgreSQLMetadataNativeTypes(t *testing.T) {
 	db := openPostgreSQLMetaForSQL(t)
-	for _, model := range autoMigrateModels() {
+	models := autoMigrateModels()
+	fieldCount := 0
+	for _, model := range models {
 		stmt := &gorm.Statement{DB: db}
 		if err := stmt.Parse(model); err != nil {
 			t.Fatal(err)
 		}
 		for _, field := range stmt.Schema.Fields {
+			fieldCount++
 			got := db.Migrator().FullDataTypeOf(field).SQL
 			for _, bad := range []string{"longtext", "mediumtext", "tinytext", "datetime", "tinyint", "blob"} {
 				if strings.Contains(strings.ToLower(got), bad) {
@@ -49,21 +67,10 @@ func TestPostgreSQLMetadataNativeTypes(t *testing.T) {
 			}
 		}
 	}
-	type mysqlStorageAnnotations struct {
-		LongText   string         `gorm:"type:longtext"`
-		MediumText string         `gorm:"type:mediumtext"`
-		TinyText   string         `gorm:"type:tinytext"`
-		DateTime   time.Time      `gorm:"type:datetime"`
-		TinyInt    int8           `gorm:"type:tinyint"`
-		Blob       []byte         `gorm:"type:blob"`
-		LongBlob   []byte         `gorm:"type:longblob"`
-		MediumBlob []byte         `gorm:"type:mediumblob"`
-		TinyBlob   []byte         `gorm:"type:tinyblob"`
-		JSON       entity.JSONMap `gorm:"type:json"`
-		Boolean    bool
-	}
+
+	t.Logf("actual migrator coverage: models=%d fields=%d", len(models), fieldCount)
 	fixture := &gorm.Statement{DB: db}
-	if err := fixture.Parse(&mysqlStorageAnnotations{}); err != nil {
+	if err := fixture.Parse(&postgresStorageAnnotations{}); err != nil {
 		t.Fatal(err)
 	}
 	expected := map[string]string{"LongText": "text", "MediumText": "text", "TinyText": "text", "DateTime": "timestamptz", "TinyInt": "smallint", "Blob": "bytea", "LongBlob": "bytea", "MediumBlob": "bytea", "TinyBlob": "bytea", "JSON": "json", "Boolean": "boolean"}
