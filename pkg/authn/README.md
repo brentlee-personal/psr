@@ -18,27 +18,42 @@ err = verifier.CheckCurrentIdentity(ctx, identity)
 Only a single Authorization Bearer header supplies the credential. This path
 never falls back to API keys, beta keys, cookies, body user/tenant fields, or
 request query parameters. The public API exposes no configurable identity or
-key authority. Native `ExtractAccessTokenContext`, `UserDAO.GetByAccessToken`
-and the edition's `resolveUserAuthTenant` remain the owning implementations;
-there is no second signature algorithm. Ordinary `ResolveAccessToken`, login
-and key initialization behavior are unchanged.
+key authority. Native `ExtractAccessTokenContext` remains the signature
+implementation;
+there is no second signature algorithm. CE strict identity uses one read-only
+native DAO observation for current-token uniqueness, account state and tenant
+relations. The downstream EE edition retains its existing authority path.
+Ordinary `ResolveAccessToken`, login and key initialization behavior are unchanged.
 
 Verification reads the current native signing key without creating missing
 keys or using generated/default values. Backend errors and token-bearing SQL
 predicates are not logged by this path. `ErrDenied` identifies a known invalid,
-expired, future, replaced or revoked credential, disabled account/tenant, or
-inactive/missing membership. `ErrUnverified` identifies unavailable key/state
+expired, future, replaced or revoked credential, disabled account, or known
+invalid explicit signed-tenant relation. `ErrUnverified` identifies unavailable key/state
 sources, missing status evidence, or missing verified active tenant. Both must
 stop protected work; source failure is not a business denial or a grant.
 
-The verified tenant must come from the native edition resolver and must have a
-current active tenant row and joined native membership. This public CE tree's
-resolver discards tenant context and returns empty. Therefore CE verification
-returns `ErrUnverified`; it never invents a tenant from a user ID. EE resolver
-sources are absent from this tree; synthetic resolved-tenant fixtures exercise
-shared checks and do not establish EE resolver behavior. Real EE verification
-requires the downstream implementation, its native signed active tenant, and
-separate runtime evidence. There is no customer organization/store mapping.
+CE requires exactly one current User for the native access token and an
+explicitly ordinary account (`IsSuperuser == false`), with known active status.
+The current token must also match exactly, independently of database collation.
+A nonempty signed tenant binds only that tenant: its real joined membership
+and active Tenant must exist, with no fallback to another tenant. The native
+CE login issuer continues to sign an empty tenant. For that credential, strict
+verification examines all native memberships and accepts exactly one real
+joined membership with an active Tenant. Zero or multiple candidates, duplicate
+rows, unknown/NULL states and joined orphan memberships return `ErrUnverified`.
+Known nonjoined memberships and disabled tenants cannot become candidates. No
+owner/personal default, synthetic membership or user-ID inference is used.
+Unknown user or tenant status values are also unverified; an explicit admin,
+disabled account, or known invalid signed-tenant relation is denied.
+
+The current-token User, complete candidate/anomaly evidence and selected real
+rows come from one SQL observation. At most two candidate rows are returned;
+anomaly evidence covers the entire relevant membership set. This bounds the
+returned result, not the database scan. Ordinary login/API-key resolvers and
+permission checks are unchanged. EE resolver sources are absent from this tree;
+CE fixture results do not establish EE behavior or build compatibility. There
+is no customer organization/store mapping.
 
 IssuedAt and native ExpiresAt come from the already authenticated native token
 timestamp. MaxAge zero uses native expiry, positive values only shorten it,
@@ -54,15 +69,21 @@ identity only inside trusted request state; never pass the proof to a model or
 serialize it. A snapshot, zero value, or identity from another verifier cannot
 be rechecked. CheckCurrentIdentity re-verifies the original signed credential,
 current key, current token row, account, native tenant and joined membership,
-and compares the same identity and deadlines. It does not look up an arbitrary
-user/tenant and call that a proof. Verification and recheck are point-in-time
+and compares the same identity and deadlines. An original empty-tenant token
+is always rechecked against the full unique-candidate rule: adding a second
+valid tenant, or replacing the original tenant with another, cannot preserve
+or silently switch the proof. Recheck never treats the resolved snapshot as a
+signed tenant selection. It does not look up an arbitrary user/tenant and call
+that a proof. Verification and recheck are point-in-time
 checks; the protected operation must follow immediately under its own access
 controls. This interface does not make the subsequent operation atomic with
 revocation.
 
-Tests use synthetic signing material and owned in-memory SQLite. They cover
+Tests use synthetic signing material and owned in-memory SQLite. They exercise
+the actual CE login issuer and strict resolver, bounded candidate and anomaly
+evidence, explicit-ordinary-account checks, original token mode on recheck,
 signature/time rejection, current-token replacement/logout, account/tenant and
 membership invalidation, state/key failures, missing/cross-issuer proof, output
-redaction and request fallback rejection. They do not prove real issuance,
+redaction and request fallback rejection. They do not prove live native issuance,
 real revocation, EE build/resolver behavior, enterprise mapping, ACK, or customer
 rollout. These remain separately recorded `NOT_RUN` until actually executed.

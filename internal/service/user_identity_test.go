@@ -28,8 +28,7 @@ import (
 const identityFixtureKey = "synthetic-test-signing-material-only"
 const identityFixtureAccess = "00000000000000000000000000000001"
 
-// These are owned, in-memory SQLite fixtures. The tenant hook below models
-// only the resolved-tenant input to shared checks, not an EE implementation.
+// These owned in-memory SQLite fixtures exercise the actual CE observer.
 func newIdentityFixture(t *testing.T) (*UserTokenVerifier, *gorm.DB, string) {
 	t.Helper()
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{Logger: logger.Discard})
@@ -46,8 +45,9 @@ func newIdentityFixture(t *testing.T) (*UserTokenVerifier, *gorm.DB, string) {
 	}
 	active := "1"
 	access := identityFixtureAccess
+	ordinary := false
 	for _, row := range []any{
-		&entity.User{ID: "fixture-user", Email: "fixture@example.invalid", AccessToken: &access, Status: &active, IsActive: "1"},
+		&entity.User{ID: "fixture-user", Email: "fixture@example.invalid", AccessToken: &access, Status: &active, IsActive: "1", IsSuperuser: &ordinary},
 		&entity.Tenant{ID: "fixture-tenant", Status: &active},
 		&entity.UserTenant{ID: "fixture-member", UserID: "fixture-user", TenantID: "fixture-tenant", Status: &active},
 	} {
@@ -55,11 +55,10 @@ func newIdentityFixture(t *testing.T) (*UserTokenVerifier, *gorm.DB, string) {
 			t.Fatal(err)
 		}
 	}
-	v := &UserTokenVerifier{source: userTokenSource{
-		db:     func() *gorm.DB { return db },
-		secret: func(context.Context) (string, error) { return identityFixtureKey, nil },
-		tenant: func(_ context.Context, _ *entity.User, tenant string) (string, error) { return tenant, nil },
-	}}
+	source := newUserTokenSource()
+	source.db = func() *gorm.DB { return db }
+	source.secret = func(context.Context) (string, error) { return identityFixtureKey, nil }
+	v := &UserTokenVerifier{source: source}
 	token, err := common.DumpAccessToken(access, "fixture-tenant", identityFixtureKey)
 	if err != nil {
 		t.Fatal(err)
@@ -179,9 +178,12 @@ func TestStrictNativeUserIdentityRechecksCurrentState(t *testing.T) {
 }
 
 func TestStrictNativeUserIdentityUnknownSourcesAndCE(t *testing.T) {
-	for _, stage := range []string{"key", "database", "tenant-resolver", "ce-empty", "nil-account-state", "nil-membership-state"} {
+	for _, stage := range []string{"key", "database", "missing-authority-table", "empty-no-tenant", "nil-account-state", "nil-membership-state"} {
 		t.Run(stage, func(t *testing.T) {
 			v, db, token := newIdentityFixture(t)
+			if stage == "empty-no-tenant" {
+				token = ceFixtureToken(t, "")
+			}
 			proof, err := v.VerifyUserToken(t.Context(), token, 30*time.Minute)
 			if err != nil {
 				t.Fatal(err)
@@ -192,12 +194,10 @@ func TestStrictNativeUserIdentityUnknownSourcesAndCE(t *testing.T) {
 			case "database":
 				sqlDB, _ := db.DB()
 				sqlDB.Close()
-			case "tenant-resolver":
-				v.source.tenant = func(context.Context, *entity.User, string) (string, error) {
-					return "", errors.New("backend-sensitive-details")
-				}
-			case "ce-empty":
-				v.source.tenant = resolveUserAuthTenant
+			case "missing-authority-table":
+				db.Migrator().DropTable(&entity.UserTenant{})
+			case "empty-no-tenant":
+				db.Where("user_id = ?", "fixture-user").Delete(&entity.UserTenant{})
 			case "nil-account-state":
 				db.Model(&entity.User{}).Where("id = ?", "fixture-user").Update("status", nil)
 			case "nil-membership-state":
@@ -229,18 +229,17 @@ func TestStrictNativeUserIdentitySuppressesTokenSQLLogs(t *testing.T) {
 }
 
 func TestStrictNativeUserIdentityRejectsExpiryDuringStateRead(t *testing.T) {
-	v, _, token := newIdentityFixture(t)
+	v, db, token := newIdentityFixture(t)
 	// A two-second policy ensures the initial verification enters the hook.
 	// The hook waits just past that same authenticated deadline.
 	parts := strings.Split(token, ".")
 	issued, _ := strconv.ParseInt(parts[3], 10, 64)
 	deadline := time.Unix(issued, 0).Add(2 * time.Second)
 	entered := false
-	v.source.tenant = func(_ context.Context, _ *entity.User, tenant string) (string, error) {
+	db.Callback().Row().After("gorm:row").Register("fixture:delay", func(*gorm.DB) {
 		entered = true
 		time.Sleep(time.Until(deadline) + 10*time.Millisecond)
-		return tenant, nil
-	}
+	})
 	if _, err := v.VerifyUserToken(t.Context(), token, 2*time.Second); !errors.Is(err, ErrUserTokenDenied) {
 		t.Fatalf("expired after state I/O: %v", err)
 	}
@@ -250,10 +249,10 @@ func TestStrictNativeUserIdentityRejectsExpiryDuringStateRead(t *testing.T) {
 }
 
 func TestStrictNativeUserIdentityRejectsCancellationDuringStateRead(t *testing.T) {
-	v, _, token := newIdentityFixture(t)
+	v, db, token := newIdentityFixture(t)
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	v.source.tenant = func(_ context.Context, _ *entity.User, tenant string) (string, error) { cancel(); return tenant, nil }
+	db.Callback().Row().After("gorm:row").Register("fixture:cancel", func(*gorm.DB) { cancel() })
 	if _, err := v.VerifyUserToken(ctx, token, 30*time.Minute); !errors.Is(err, ErrUserTokenUnverified) {
 		t.Fatalf("cancelled after state I/O: %v", err)
 	}
@@ -293,30 +292,29 @@ func TestStrictNativeUserIdentityRechecksKeyAndAge(t *testing.T) {
 }
 
 func TestStrictNativeUserIdentityRecheckRejectsExpiryDuringStateRead(t *testing.T) {
-	v, _, token := newIdentityFixture(t)
+	v, db, token := newIdentityFixture(t)
 	proof, err := v.VerifyUserToken(t.Context(), token, 2*time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}
 	deadline := proof.Snapshot().ExpiresAt
-	v.source.tenant = func(_ context.Context, _ *entity.User, tenant string) (string, error) {
+	db.Callback().Row().After("gorm:row").Register("fixture:delay", func(*gorm.DB) {
 		time.Sleep(time.Until(deadline) + 10*time.Millisecond)
-		return tenant, nil
-	}
+	})
 	if err := v.CheckCurrentIdentity(t.Context(), proof); !errors.Is(err, ErrUserTokenDenied) {
 		t.Fatalf("recheck expired after I/O: %v", err)
 	}
 }
 
 func TestStrictNativeUserIdentityRecheckRejectsCancellationDuringStateRead(t *testing.T) {
-	v, _, token := newIdentityFixture(t)
+	v, db, token := newIdentityFixture(t)
 	proof, err := v.VerifyUserToken(t.Context(), token, 30*time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	v.source.tenant = func(_ context.Context, _ *entity.User, tenant string) (string, error) { cancel(); return tenant, nil }
+	db.Callback().Row().After("gorm:row").Register("fixture:cancel", func(*gorm.DB) { cancel() })
 	if err := v.CheckCurrentIdentity(ctx, proof); !errors.Is(err, ErrUserTokenUnverified) {
 		t.Fatalf("recheck cancelled after I/O: %v", err)
 	}
