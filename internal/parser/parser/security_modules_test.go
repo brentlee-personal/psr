@@ -91,8 +91,16 @@ func TestSecurityHTMLTextCoalescing(t *testing.T) {
 				t.Fatal(result.Err)
 			}
 			items := ItemsToMaps(result.JSON)
-			if len(items) != 1 || items[0]["text"] != strings.Repeat("a", n) {
-				t.Fatalf("application text output differs: items=%d", len(items))
+			wantItems := 1
+			if prefix != "" {
+				wantItems = 2
+			}
+			if len(items) != wantItems || items[0]["doc_type_kwd"] != "text" || items[0]["text"] != strings.Repeat("a", n) {
+				t.Fatalf("application text output differs: items=%d, want %d", len(items), wantItems)
+			}
+			if prefix != "" {
+				// Fostered text precedes the preserved empty table.
+				requireTableRows(t, items[1], [][]string{})
 			}
 		})
 	}
