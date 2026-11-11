@@ -267,7 +267,7 @@ func (dao *KnowledgebaseDAO) ListByQuery(ctx context.Context, query *gorm.DB, ow
 	var total int64
 
 	query = query.WithContext(ctx).
-		Select(metadataSQL(db, `knowledgebase.id, knowledgebase.avatar, knowledgebase.name,
+		Select(metadataSQL(query, `knowledgebase.id, knowledgebase.avatar, knowledgebase.name,
 		knowledgebase.language, knowledgebase.description, knowledgebase.tenant_id,
 		knowledgebase.permission, knowledgebase.doc_num, knowledgebase.token_num,
 		knowledgebase.chunk_num, knowledgebase.similarity_threshold,
@@ -275,7 +275,7 @@ func (dao *KnowledgebaseDAO) ListByQuery(ctx context.Context, query *gorm.DB, ow
 		knowledgebase.pagerank, knowledgebase.embd_id,
 		knowledgebase.tenant_embd_id, knowledgebase.pipeline_id, knowledgebase.pipeline_version_id,
 		user.nickname, user.avatar as tenant_avatar, knowledgebase.update_time`)).
-		Joins(metadataSQL(db, "LEFT JOIN user ON knowledgebase.tenant_id = user.id")).
+		Joins(metadataSQL(query, "LEFT JOIN user ON knowledgebase.tenant_id = user.id")).
 		Where("knowledgebase.status = ?", string(entity.StatusValid))
 
 	if len(ownerIDs) > 0 {
