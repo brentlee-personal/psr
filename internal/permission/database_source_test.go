@@ -297,6 +297,99 @@ func TestDatabaseCheckerScopesDatasetsToMembershipAndVisibility(t *testing.T) {
 	}
 }
 
+func TestDatabaseCheckerScopesDocumentsToAuthorizedDataset(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open("file:"+url.QueryEscape(t.Name())+"?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	if err := db.AutoMigrate(&entity.Knowledgebase{}, &entity.Document{}, &entity.UserTenant{}); err != nil {
+		t.Fatalf("migrate permission tables: %v", err)
+	}
+
+	valid := string(entity.StatusValid)
+	invalid := string(entity.StatusInvalid)
+	datasets := []entity.Knowledgebase{
+		{ID: "team-dataset", TenantID: "team-tenant", CreatedBy: "team-owner", Permission: string(entity.TenantPermissionTeam), Status: &valid},
+		{ID: "private-dataset", TenantID: "private-tenant", CreatedBy: "private-owner", Permission: string(entity.TenantPermissionMe), Status: &valid},
+	}
+	for i := range datasets {
+		if err := db.Create(&datasets[i]).Error; err != nil {
+			t.Fatalf("create dataset %q: %v", datasets[i].ID, err)
+		}
+	}
+	documents := []entity.Document{
+		{ID: "team-document-1", KbID: "team-dataset", ParserID: "general", ParserConfig: entity.JSONMap{}, SourceType: "local", Type: "pdf", CreatedBy: "team-owner", Suffix: "pdf", Status: &valid},
+		{ID: "team-document-2", KbID: "team-dataset", ParserID: "general", ParserConfig: entity.JSONMap{}, SourceType: "local", Type: "pdf", CreatedBy: "team-owner", Suffix: "pdf", Status: &valid},
+		{ID: "invalid-team-document", KbID: "team-dataset", ParserID: "general", ParserConfig: entity.JSONMap{}, SourceType: "local", Type: "pdf", CreatedBy: "team-owner", Suffix: "pdf", Status: &invalid},
+		{ID: "private-document", KbID: "private-dataset", ParserID: "general", ParserConfig: entity.JSONMap{}, SourceType: "local", Type: "pdf", CreatedBy: "private-owner", Suffix: "pdf", Status: &valid},
+	}
+	for i := range documents {
+		if err := db.Create(&documents[i]).Error; err != nil {
+			t.Fatalf("create document %q: %v", documents[i].ID, err)
+		}
+	}
+	memberships := []entity.UserTenant{
+		{ID: "team-owner-membership", UserID: "team-owner", TenantID: "team-tenant", Role: string(RoleOwner), Status: &valid},
+		{ID: "team-member-membership", UserID: "team-member", TenantID: "team-tenant", Role: string(RoleNormal), Status: &valid},
+		{ID: "private-owner-membership", UserID: "private-owner", TenantID: "private-tenant", Role: string(RoleOwner), Status: &valid},
+	}
+	for i := range memberships {
+		if err := db.Create(&memberships[i]).Error; err != nil {
+			t.Fatalf("create membership %q: %v", memberships[i].ID, err)
+		}
+	}
+
+	checker := newCommunityDatabaseChecker(db)
+	ctx := WithIdentity(context.Background(), "team-member", "")
+	query := ScopeQuery{
+		Kind:      ResourceKindDocument,
+		Parent:    ResourceRef{Kind: ResourceKindDataset, ID: "team-dataset"},
+		Operation: OperationRead,
+	}
+	scope, err := checker.Scope(ctx, query)
+	if err != nil {
+		t.Fatalf("Scope(documents) error = %v", err)
+	}
+	if scope.Mode != ScopeIDs || len(scope.ResourceIDs) != 2 {
+		t.Fatalf("Scope(documents) = %+v, want only documents in the readable team dataset", scope)
+	}
+	scopedIDs := make(map[string]bool, len(scope.ResourceIDs))
+	for _, id := range scope.ResourceIDs {
+		scopedIDs[id] = true
+	}
+	if !scopedIDs["team-document-1"] || !scopedIDs["team-document-2"] || scopedIDs["private-document"] || scopedIDs["invalid-team-document"] {
+		t.Fatalf("Scope(documents) returned %v, want only documents in the readable team dataset", scope.ResourceIDs)
+	}
+
+	queryScope, err := checker.QueryScope(ctx, query)
+	if err != nil {
+		t.Fatalf("QueryScope(documents) error = %v", err)
+	}
+	var documentIDs []string
+	if err := queryScope.Apply(db.Model(&entity.Document{})).Order("document.id").Pluck("document.id", &documentIDs).Error; err != nil {
+		t.Fatalf("query authorized documents: %v", err)
+	}
+	if len(documentIDs) != 2 || documentIDs[0] != "team-document-1" || documentIDs[1] != "team-document-2" {
+		t.Fatalf("QueryScope(documents) returned %v, want only documents in the readable team dataset", documentIDs)
+	}
+
+	privateQuery := ScopeQuery{
+		Kind:      ResourceKindDocument,
+		Parent:    ResourceRef{Kind: ResourceKindDataset, ID: "private-dataset"},
+		Operation: OperationRead,
+	}
+	privateScope, err := checker.Scope(ctx, privateQuery)
+	if err != nil {
+		t.Fatalf("Scope(private documents) error = %v", err)
+	}
+	if privateScope.Mode != ScopeNone || len(privateScope.ResourceIDs) != 0 {
+		t.Fatalf("Scope(private documents) = %+v, want no accessible documents", privateScope)
+	}
+	if err := checker.CheckResource(ctx, ResourceRef{Kind: ResourceKindDocument, ID: "private-document"}, OperationRead); !errors.Is(err, ErrPermissionDenied) {
+		t.Fatalf("CheckResource(private document) error = %v, want permission denied", err)
+	}
+}
+
 func TestCheckerQueryScopeFallsBackToAuthorizedIDs(t *testing.T) {
 	db, err := gorm.Open(sqlite.Open("file:"+url.QueryEscape(t.Name())+"?mode=memory&cache=shared"), &gorm.Config{})
 	if err != nil {
