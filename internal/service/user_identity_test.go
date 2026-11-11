@@ -291,3 +291,33 @@ func TestStrictNativeUserIdentityRechecksKeyAndAge(t *testing.T) {
 		}
 	})
 }
+
+func TestStrictNativeUserIdentityRecheckRejectsExpiryDuringStateRead(t *testing.T) {
+	v, _, token := newIdentityFixture(t)
+	proof, err := v.VerifyUserToken(t.Context(), token, 2*time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	deadline := proof.Snapshot().ExpiresAt
+	v.source.tenant = func(_ context.Context, _ *entity.User, tenant string) (string, error) {
+		time.Sleep(time.Until(deadline) + 10*time.Millisecond)
+		return tenant, nil
+	}
+	if err := v.CheckCurrentIdentity(t.Context(), proof); !errors.Is(err, ErrUserTokenDenied) {
+		t.Fatalf("recheck expired after I/O: %v", err)
+	}
+}
+
+func TestStrictNativeUserIdentityRecheckRejectsCancellationDuringStateRead(t *testing.T) {
+	v, _, token := newIdentityFixture(t)
+	proof, err := v.VerifyUserToken(t.Context(), token, 30*time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	v.source.tenant = func(_ context.Context, _ *entity.User, tenant string) (string, error) { cancel(); return tenant, nil }
+	if err := v.CheckCurrentIdentity(ctx, proof); !errors.Is(err, ErrUserTokenUnverified) {
+		t.Fatalf("recheck cancelled after I/O: %v", err)
+	}
+}
