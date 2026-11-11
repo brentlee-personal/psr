@@ -2,7 +2,7 @@
 > **Input**: Exact DockerHub repositories, full tags and Linux amd64 platform-manifest digests.
 > **Output**: Four source-bound Actions OCI artifacts and persistent GPU evidence.
 > **Position**: Dependency producer for the existing PSR Go artifact workflow.
-> **Upstream**: Official docker/docker-compose-base.yml and reviewed inputs.lock.json.
+> **Upstream**: Reviewed inputs.lock.json; docker/docker-compose-base.yml is the original baseline.
 > **Downstream**: Trusted broker dependency import; isolated ACK readiness tests.
 > **Last-verified**: 2026-11-11; upstream manifest audit and narrow producer tests only.
 
@@ -20,12 +20,17 @@ The only approved repositories and full source tags are:
 | kvrocks | apache/kvrocks | 2.16.0 |
 | nats | library/nats | 2.14.2 |
 | infinity | infiniflow/infinity | v0.7.5-x64-v3 |
-| minio | pgsty/silo | RELEASE.2026-08-06T00-00-00Z |
+| minio | pgsty/silo | RELEASE.2026-11-09T00-00-00Z |
 
 The `minio` slot names the application's S3 test dependency; its actual image is
 pgsty/silo. Infinity's x64-v3 CPU requirements must be checked against ACK nodes
 before deployment. These images are test dependencies, not new production
 services.
+
+The November Silo tag and its locked digest are reviewed security candidate
+inputs. The original Compose source remains the baseline and does not establish
+this candidate identity. Normal artifact production, compatibility validation,
+a new security scan and consumer admission remain separate requirements.
 
 `inputs.lock.json` records the exact platform manifests, independently resolved
 from the above tags. The producer accepts no arbitrary repository, tag, URL or
