@@ -27,7 +27,7 @@ copy_locked_files() {
  local input_root=$1 manifest=$2 destination=$3 hash relative resolved
  mkdir -p "$destination"
  while read -r hash relative; do
-  relative=\${relative#./}
+  relative=${relative#./}
   [[ $hash =~ ^[a-f0-9]{64}$ && $relative != /* && "/$relative/" != */../* && "/$relative/" != */./* ]]
   resolved=$(realpath "$input_root/$relative")
   [[ $resolved == "$input_root/"* && -f $resolved ]]

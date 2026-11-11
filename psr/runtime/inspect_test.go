@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -100,5 +102,71 @@ func TestRejectMultipleManifests(t *testing.T) {
 	os.WriteFile(filepath.Join(root, "index.json"), b, 0600)
 	if _, err := inspect(root, testSource); err == nil {
 		t.Fatal("accepted multiple images")
+	}
+}
+
+func producerFunction(t *testing.T) string {
+	t.Helper()
+	source, err := os.ReadFile("produce.sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(source)
+	start := strings.Index(text, "copy_locked_files() {")
+	if start < 0 {
+		t.Fatal("missing copy owner")
+	}
+	end := strings.Index(text[start:], "\n}\n")
+	if end < 0 {
+		t.Fatal("missing function end")
+	}
+	return text[start : start+end+3]
+}
+func runCopy(t *testing.T, root, manifest, dest string) error {
+	t.Helper()
+	cmd := exec.Command("bash", "-euc", producerFunction(t)+"\ncopy_locked_files \"$1\" \"$2\" \"$3\"", "copy-test", root, manifest, dest)
+	b, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Logf("copy refused: %s", b)
+	}
+	return err
+}
+func TestCopyOnlyLockedDependencies(t *testing.T) {
+	root := t.TempDir()
+	dst := filepath.Join(t.TempDir(), "output")
+	os.Mkdir(filepath.Join(root, "nested"), 0700)
+	payload := []byte("public resource")
+	os.WriteFile(filepath.Join(root, "nested", "known"), payload, 0600)
+	os.WriteFile(filepath.Join(root, "unlisted-private-file"), []byte("synthetic extra file"), 0600)
+	manifest := filepath.Join(t.TempDir(), "checksums")
+	os.WriteFile(manifest, []byte(fmt.Sprintf("%x  ./nested/known\n", sha256.Sum256(payload))), 0600)
+	if err := runCopy(t, root, manifest, dst); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(filepath.Join(dst, "nested", "known"))
+	if err != nil || string(got) != string(payload) {
+		t.Fatal("locked payload not copied")
+	}
+	if _, err = os.Stat(filepath.Join(dst, "unlisted-private-file")); !os.IsNotExist(err) {
+		t.Fatal("unlisted input escaped into artifact")
+	}
+}
+func TestRejectEscapingDependencyPath(t *testing.T) {
+	root := t.TempDir()
+	manifest := filepath.Join(t.TempDir(), "checksums")
+	os.WriteFile(manifest, []byte(fmt.Sprintf("%064d  ../outside\n", 0)), 0600)
+	if err := runCopy(t, root, manifest, filepath.Join(t.TempDir(), "out")); err == nil {
+		t.Fatal("accepted traversal")
+	}
+}
+func TestRejectExternalDependencySymlink(t *testing.T) {
+	root := t.TempDir()
+	outside := filepath.Join(t.TempDir(), "outside")
+	os.WriteFile(outside, []byte("synthetic outside file"), 0600)
+	os.Symlink(outside, filepath.Join(root, "linked"))
+	manifest := filepath.Join(t.TempDir(), "checksums")
+	os.WriteFile(manifest, []byte(fmt.Sprintf("%064d  linked\n", 0)), 0600)
+	if err := runCopy(t, root, manifest, filepath.Join(t.TempDir(), "out")); err == nil {
+		t.Fatal("accepted external symlink")
 	}
 }
