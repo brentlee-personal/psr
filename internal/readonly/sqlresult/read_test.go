@@ -302,6 +302,49 @@ func TestExpiredContextZeroQueries(t *testing.T) {
 	}
 }
 
+type cancellationAtCheck struct {
+	context.Context
+	cancel context.CancelFunc
+	checks int
+	at     int
+}
+
+func (c *cancellationAtCheck) Err() error {
+	c.checks++
+	if c.checks == c.at {
+		c.cancel()
+	}
+	return c.Context.Err()
+}
+
+func TestCancellationImmediatelyAfterScan(t *testing.T) {
+	// Rows use an independent live driver context. This synthetic reader context
+	// cancels precisely at Read's post-Scan check, avoiding scheduler races and
+	// making no assertion about real database cancellation.
+	base, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	ctx := &cancellationAtCheck{Context: base, cancel: cancel, at: 6}
+	f := &fixture{columns: []string{"x"}, values: [][]driver.Value{{"CANARY_RESULT"}}}
+	rows, err := database(t, f).QueryContext(t.Context(), "synthetic")
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := Read(ctx, rows, limits())
+	if err != ErrCanceled || r.Completeness != Unknown || len(r.Rows) != 0 || f.closeCount.Load() != 1 || f.nextCount.Load() != 1 {
+		t.Fatal("post-Scan cancellation released a row or skipped close")
+	}
+}
+
+func TestCancellationDuringFailedClose(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	f := &fixture{columns: []string{"x"}, closeErr: errors.New("CANARY_CLOSE"), onClose: cancel}
+	r, err := Query(ctx, database(t, f), "synthetic", nil, limits())
+	if err != ErrCanceled || r.Completeness != Unknown || r.RowsClose != CloseUnknown {
+		t.Fatal("cancel/close-error race claimed completion or cleanup")
+	}
+}
+
 func TestCancellationWaitsForIgnoringDriver(t *testing.T) {
 	for _, stage := range []string{"query", "next", "close"} {
 		t.Run(stage, func(t *testing.T) {
