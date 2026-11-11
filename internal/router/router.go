@@ -58,6 +58,7 @@ type Router struct {
 	compilationTemplateHandler      *handler.CompilationTemplateHandler
 	compilationTemplateGroupHandler *handler.CompilationTemplateGroupHandler
 	datasetArtifactHandler          *handler.DatasetArtifactHandler
+	permissionHandler               *handler.PermissionHandler
 }
 
 // NewRouter create router
@@ -95,6 +96,7 @@ func NewRouter(
 	compilationTemplateHandler *handler.CompilationTemplateHandler,
 	compilationTemplateGroupHandler *handler.CompilationTemplateGroupHandler,
 	datasetArtifactHandler *handler.DatasetArtifactHandler,
+	permissionHandler *handler.PermissionHandler,
 ) *Router {
 	return &Router{
 		authHandler:          authHandler,
@@ -131,6 +133,7 @@ func NewRouter(
 		compilationTemplateHandler:      compilationTemplateHandler,
 		compilationTemplateGroupHandler: compilationTemplateGroupHandler,
 		datasetArtifactHandler:          datasetArtifactHandler,
+		permissionHandler:               permissionHandler,
 	}
 }
 
@@ -266,6 +269,11 @@ func (r *Router) Setup(engine *gin.Engine) {
 				tenants.GET("/:tenant_id/users", r.tenantHandler.ListTenantMembers)
 				tenants.POST("/:tenant_id/users", r.tenantHandler.AddTenantMember)
 				tenants.DELETE("/:tenant_id/users", r.tenantHandler.RemoveTenantMember)
+			}
+
+			permissions := v1.Group("/permissions")
+			{
+				permissions.POST("/check", r.permissionHandler.CheckResource)
 			}
 
 			// Tenant routes (per-tenant resources)
