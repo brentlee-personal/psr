@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "platform": "linux/amd64",
+  "images": [
+    {
+      "name": "kvrocks",
+      "repository": "apache/kvrocks",
+      "upstream_tag": "2.16.0",
+      "upstream_manifest_digest": "sha256:3fda9cf42b27ff7252333146139d5e9c157f98f288e3b09dcbf127c49c132526"
+    },
+    {
+      "name": "nats",
+      "repository": "library/nats",
+      "upstream_tag": "2.14.2",
+      "upstream_manifest_digest": "sha256:65713a1834b75d00256f847cc7b8db5fea12121bbf341edfff76f84a76b56ef2"
+    },
+    {
+      "name": "infinity",
+      "repository": "infiniflow/infinity",
+      "upstream_tag": "v0.7.5-x64-v3",
+      "upstream_manifest_digest": "sha256:30c58afe2502c8766e1c4af6e3c2b6a7b0999b5c6523b163bed8a068d3cd5154"
+    },
+    {
+      "name": "minio",
+      "repository": "pgsty/silo",
+      "upstream_tag": "RELEASE.2026-11-09T00-00-00Z",
+      "upstream_manifest_digest": "sha256:47271709b91be7f607a26dfa6485be4921c07b5d277d0adea65f37e1919ad5e9"
+    }
+  ]
+}

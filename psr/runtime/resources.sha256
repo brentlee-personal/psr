@@ -1,0 +1,12 @@
+75343b9f8425dd0bb48f7178bd0d4e7d90d9061af8e821a9a33e06e648167ba1  ./Dockerfile
+990c807e79c25662a5a9ecf7f971baeb2bf2eab9a559e5ecf15cdfdb8561d21f  ./NotoSansCJKsc-VF.ttf
+223921b76ee99bde995b7ff738513eef100fb51d18c93597a113bcffe865b2a7  ./cl100k_base.tiktoken
+07eced375cec144d27c900241f3e339478dec958f92fddbc551f295c992038a3  ./huggingface.co/BAAI/bge-large-en-v1.5/vocab.txt
+cfc8146abe2a0488e9e2a0c56de7952f7c11ab059eca145a0a727afce0db2865  ./huggingface.co/BAAI/bge-m3/sentencepiece.bpe.model
+fd62614cbae0b073aa203b2393081e641826ecfc85414669458506d91e23c095  ./huggingface.co/InfiniFlow/deepdoc/det.ort
+55e3e5743ba2f2a03879578ac818089afa32bdedda51159d340bc2eec968b030  ./huggingface.co/InfiniFlow/deepdoc/layout.ort
+28b2362ad4ab2dc38769aa72feb535e3a9ddb3fd2a7585a05920e6393b1dc7f7  ./huggingface.co/InfiniFlow/deepdoc/ocr.res
+a6eb83a8943d2dca6de8e1393420904bddd4dded455d72ca177ade63b56533d0  ./huggingface.co/InfiniFlow/deepdoc/rec.ort
+24930ee6d025dc8e5c17587713d74a7d665d3ca8a464df015afb6e939af0d2f7  ./huggingface.co/InfiniFlow/deepdoc/tsr.ort
+def76fb086971c7867b829c23a26261e38d9d74e02139253b38aeb9df8b4b50a  ./huggingface.co/Qwen/Qwen3-Embedding-0.6B/tokenizer.json
+fc4f0bd70b3709312d9d1d9e5ba674794b6bc5abc17429897a540f93882f25fc  ./huggingface.co/intfloat/e5-mistral-7b-instruct/tokenizer.json
