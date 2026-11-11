@@ -18,10 +18,11 @@ package dao
 
 import (
 	"gorm.io/gorm"
-	"gorm.io/gorm/schema"
+	"ragflow/internal/entity"
 	"ragflow/internal/server/config"
 	"strings"
 	"testing"
+	"time"
 )
 
 func openPostgreSQLMetaForSQL(t *testing.T) *gorm.DB {
@@ -40,17 +41,41 @@ func TestPostgreSQLMetadataNativeTypes(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, field := range stmt.Schema.Fields {
-			got := db.Dialector.DataTypeOf(field)
-			for _, bad := range []string{"longtext", "datetime", "tinyint"} {
+			got := db.Migrator().FullDataTypeOf(field).SQL
+			for _, bad := range []string{"longtext", "mediumtext", "tinytext", "datetime", "tinyint", "blob"} {
 				if strings.Contains(strings.ToLower(got), bad) {
 					t.Errorf("%s.%s emits non-PostgreSQL type %s", stmt.Schema.Table, field.DBName, got)
 				}
 			}
 		}
 	}
-	if got := db.Dialector.DataTypeOf(&schema.Field{DataType: "longtext"}); got != "text" {
-		t.Fatal(got)
+	type mysqlStorageAnnotations struct {
+		LongText   string         `gorm:"type:longtext"`
+		MediumText string         `gorm:"type:mediumtext"`
+		TinyText   string         `gorm:"type:tinytext"`
+		DateTime   time.Time      `gorm:"type:datetime"`
+		TinyInt    int8           `gorm:"type:tinyint"`
+		Blob       []byte         `gorm:"type:blob"`
+		LongBlob   []byte         `gorm:"type:longblob"`
+		MediumBlob []byte         `gorm:"type:mediumblob"`
+		TinyBlob   []byte         `gorm:"type:tinyblob"`
+		JSON       entity.JSONMap `gorm:"type:json"`
+		Boolean    bool
 	}
+	fixture := &gorm.Statement{DB: db}
+	if err := fixture.Parse(&mysqlStorageAnnotations{}); err != nil {
+		t.Fatal(err)
+	}
+	expected := map[string]string{"LongText": "text", "MediumText": "text", "TinyText": "text", "DateTime": "timestamptz", "TinyInt": "smallint", "Blob": "bytea", "LongBlob": "bytea", "MediumBlob": "bytea", "TinyBlob": "bytea", "JSON": "json", "Boolean": "boolean"}
+	for name, want := range expected {
+		t.Run(name, func(t *testing.T) {
+			got := db.Migrator().FullDataTypeOf(fixture.Schema.FieldsByName[name]).SQL
+			if got != want {
+				t.Errorf("actual migrator type=%q, want %q", got, want)
+			}
+		})
+	}
+
 }
 func TestPostgreSQLMetadataQuotesOnlyIdentifiers(t *testing.T) {
 	db := openPostgreSQLMetaForSQL(t)
