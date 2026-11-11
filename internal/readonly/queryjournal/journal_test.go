@@ -2,6 +2,7 @@ package queryjournal
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -528,5 +529,110 @@ func TestAdmissionAcrossIndependentProcesses(t *testing.T) {
 	}
 	if ttl := s.TTL(m.key); ttl != 0 {
 		t.Fatalf("reservation TTL %v", ttl)
+	}
+}
+
+type delayedReplyHook struct{ after func() }
+
+func (h delayedReplyHook) DialHook(next redis.DialHook) redis.DialHook { return next }
+func (h delayedReplyHook) ProcessPipelineHook(next redis.ProcessPipelineHook) redis.ProcessPipelineHook {
+	return next
+}
+func (h delayedReplyHook) ProcessHook(next redis.ProcessHook) redis.ProcessHook {
+	return func(ctx context.Context, cmd redis.Cmder) error {
+		err := next(ctx, cmd)
+		if err == nil && cmd.Name() == "eval" {
+			h.after()
+		}
+		return err
+	}
+}
+
+func TestAdmissionExpiryAfterStoreWriteRetainsUnknownSlot(t *testing.T) {
+	for _, kind := range []string{"deadline", "context"} {
+		t.Run(kind, func(t *testing.T) {
+			m, peer, _ := fixture(t, nil)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			deadline := time.Now().Add(time.Minute)
+			if kind == "deadline" {
+				deadline = time.Now().Add(50 * time.Millisecond)
+				m.client.AddHook(delayedReplyHook{after: func() { time.Sleep(60 * time.Millisecond) }})
+			} else {
+				m.client.AddHook(delayedReplyHook{after: cancel})
+			}
+			r, err := m.Reserve(ctx, binding("delayed_execution"), deadline)
+			if err == nil {
+				t.Error("expired admission returned execution authorization")
+			}
+			if err != nil && r.Binding.ExecutionID != "" {
+				t.Error("uncertain admission returned an execution record")
+			}
+			stored, readErr := peer.Read(context.Background(), "delayed_execution")
+			if readErr != nil || stored.Released {
+				t.Fatalf("unknown slot not retained: %v", readErr)
+			}
+			reserve(t, peer, "second")
+			_, err = peer.Reserve(context.Background(), binding("third"), time.Now().Add(time.Minute))
+			wantErr(t, err, ErrBusy)
+		})
+	}
+}
+
+func TestCorruptStoredRecordsFailClosed(t *testing.T) {
+	cases := []struct {
+		name   string
+		mutate func(*Record)
+	}{
+		{"released_running", func(r *Record) { r.Released = true }},
+		{"phase_enum", func(r *Record) { r.Phase = "invalid" }},
+		{"outcome_enum", func(r *Record) { r.Outcome = "invalid" }},
+		{"completeness_enum", func(r *Record) { r.Completeness = "invalid" }},
+		{"cleanup_enum", func(r *Record) { r.Cleanup = "invalid" }},
+		{"unsafe_locator", func(r *Record) { r.BackendLocator = "mysql://CANARY" }},
+		{"long_locator", func(r *Record) { r.BackendLocator = strings.Repeat("a", 129) }},
+		{"unsafe_evidence", func(r *Record) { r.EvidenceRef = "SELECT CANARY" }},
+		{"long_evidence", func(r *Record) { r.EvidenceRef = strings.Repeat("a", 129) }},
+		{"version_overflow", func(r *Record) { r.Version = maxExactInteger + 1 }},
+		{"zero_version", func(r *Record) { r.Version = 0 }},
+		{"invalid_slot", func(r *Record) { r.Slot = 3 }},
+		{"deadline_overflow", func(r *Record) { r.DeadlineMS = maxExactInteger + 1 }},
+		{"created_negative", func(r *Record) { r.CreatedMS = -1 }},
+		{"updated_negative", func(r *Record) { r.UpdatedMS = -1 }},
+		{"live_evidence", func(r *Record) { r.EvidenceRef = "proof" }},
+		{"live_cleanup_confirmed", func(r *Record) { r.Cleanup = CleanupConfirmed }},
+		{"live_known_outcome", func(r *Record) { r.Outcome = Succeeded }},
+		{"live_completeness", func(r *Record) { r.Completeness = Complete }},
+		{"running_without_backend", func(r *Record) { r.BackendLocator = "" }},
+		{"reserved_with_backend", func(r *Record) { r.Phase = Reserved }},
+		{"terminal_not_released", func(r *Record) { r.Phase = Terminal }},
+		{"released_without_evidence", func(r *Record) {
+			r.Released = true
+			r.Phase = Terminal
+			r.Cleanup = CleanupConfirmed
+			r.Outcome = Succeeded
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var observed bool
+			m, _, _ := fixture(t, observerFunc(func(ctx context.Context, r Record) (Observation, error) { observed = true; return confirmed(ctx, r) }))
+			r := bind(t, m, reserve(t, m, "execution"))
+			tc.mutate(&r)
+			raw, err := json.Marshal(r)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err = m.client.HSet(context.Background(), m.key, "record:execution", string(raw)).Err(); err != nil {
+				t.Fatal(err)
+			}
+			_, err = m.Read(context.Background(), "execution")
+			wantErr(t, err, ErrUnavailable)
+			_, err = m.Reconcile(context.Background(), "execution")
+			wantErr(t, err, ErrUnavailable)
+			if observed {
+				t.Error("corrupt record reached observer")
+			}
+		})
 	}
 }
