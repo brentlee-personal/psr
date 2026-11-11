@@ -84,7 +84,7 @@ expect_server_output() {
     fi
 }
 
-expect_server_output "RAGFlow version:" "$SERVER" --version
+expect_server_output "RAGFlow version:" "$SERVER" --api --version
 expect_server_output "RAGFlow API Server" "$SERVER" --api --help
 if ! "$CLI" --version | grep -q "RAGFlow CLI version"; then
     echo "error: CLI version command did not produce its version output" >&2
