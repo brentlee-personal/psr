@@ -12,12 +12,18 @@ on:
         type: boolean
         default: false
 
+      dependency_only:
+        description: Package the four approved test dependencies from upstream digests
+        required: true
+        type: boolean
+        default: false
+
 permissions:
   contents: read
 
 jobs:
   linux-amd64:
-    if: github.event_name == 'push' || !inputs.complete_runtime
+    if: github.event_name == 'push' || (!inputs.complete_runtime && !inputs.dependency_only)
     runs-on: ubuntu-24.04
     container:
       image: infiniflow/github_action_runner@sha256:1ac3980a915be9dc9cb51e97dac1864e2d1690dc426b1149d94e2b5edf5157e7
@@ -63,6 +69,10 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && inputs.complete_runtime
     runs-on: [self-hosted, Linux, X64, psr-go-runtime-20261111]
     timeout-minutes: 120
+    env:
+      HTTP_PROXY: http://127.0.0.1:7897
+      HTTPS_PROXY: http://127.0.0.1:7897
+      NO_PROXY: localhost,127.0.0.1
     steps:
       - name: Check out producer control source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -74,6 +84,7 @@ jobs:
         id: lock
         shell: bash
         run: |
+          if [[ "${{ inputs.dependency_only }}" == true ]]; then echo "select one producer target" >&2; exit 2; fi
           source_sha=$(jq -er '.application_source_sha | select(test("^[a-f0-9]{40}$"))' control/psr/runtime/inputs.lock.json)
           echo "source_sha=$source_sha" >> "$GITHUB_OUTPUT"
       - name: Check out exact application source
@@ -146,3 +157,90 @@ jobs:
             cat "$RUNNER_TEMP/psr-runtime-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT/payload/source-manifest.json"
             echo "Registry publication, RDS integration and ACK deployment are separate gates."
           } >> "$GITHUB_STEP_SUMMARY"
+
+  test-dependencies:
+    if: github.event_name == 'workflow_dispatch' && inputs.dependency_only && !inputs.complete_runtime
+    runs-on: [self-hosted, Linux, X64, psr-go-runtime-20261111]
+    timeout-minutes: 120
+    env:
+      HTTP_PROXY: http://127.0.0.1:7897
+      HTTPS_PROXY: http://127.0.0.1:7897
+      NO_PROXY: localhost,127.0.0.1
+    steps:
+      - name: Check out dependency producer control
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          path: control
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Fetch exact approved upstream blobs and produce OCI artifacts
+        shell: bash
+        run: |
+          test "$(git -C control rev-parse HEAD)" = "$GITHUB_SHA"
+          output="$RUNNER_TEMP/psr-dependencies-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          mkdir -p "$output/logs"
+          sudo -n docker run --rm --runtime=runc --user 0:0 --env HOME=/root --read-only \
+            --cpus=2 --cpuset-cpus=4,5 --memory=2g --pids-limit=128 --network=host \
+            --env GOTOOLCHAIN=local --env GOCACHE=/tmp/gocache \
+            --env HTTPS_PROXY=http://127.0.0.1:7897 --env HTTP_PROXY=http://127.0.0.1:7897 \
+            --tmpfs /tmp:rw,exec,nosuid,nodev,size=512m \
+            --mount "type=bind,src=$GITHUB_WORKSPACE/control,dst=/control,readonly" \
+            --mount "type=bind,src=$output,dst=/output" \
+            --workdir /control --entrypoint /bin/bash \
+            infiniflow/github_action_runner@sha256:1ac3980a915be9dc9cb51e97dac1864e2d1690dc426b1149d94e2b5edf5157e7 \
+            -ec 'go run ./psr/dependencies /output/payload "$1"' -- "$GITHUB_SHA" \
+            2>&1 | tee "$output/logs/producer.log"
+      - name: Persist dependency evidence
+        if: always()
+        shell: bash
+        run: |
+          output="$RUNNER_TEMP/psr-dependencies-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          receipt="/data/brent/workspace/go-core-oci-producer-evidence-20261111/dependency-runs/$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          mkdir -p "$receipt/logs"
+          if [[ -d "$output/logs" ]]; then cp -a "$output/logs/." "$receipt/logs/"; fi
+          for name in kvrocks nats infinity minio; do
+            if [[ -f "$output/payload/$name/source-manifest.json" ]]; then
+              mkdir -p "$receipt/$name"
+              cp "$output/payload/$name/"*.json "$receipt/$name/"
+            fi
+          done
+      - name: Upload kvrocks OCI payload
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: psr-test-dependency-kvrocks-linux-amd64
+          path: ${{ runner.temp }}/psr-dependencies-${{ github.run_id }}-${{ github.run_attempt }}/payload/kvrocks/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+      - name: Upload nats OCI payload
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: psr-test-dependency-nats-linux-amd64
+          path: ${{ runner.temp }}/psr-dependencies-${{ github.run_id }}-${{ github.run_attempt }}/payload/nats/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+      - name: Upload infinity OCI payload
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: psr-test-dependency-infinity-linux-amd64
+          path: ${{ runner.temp }}/psr-dependencies-${{ github.run_id }}-${{ github.run_attempt }}/payload/infinity/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+      - name: Upload S3 test OCI payload
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: psr-test-dependency-minio-linux-amd64
+          path: ${{ runner.temp }}/psr-dependencies-${{ github.run_id }}-${{ github.run_attempt }}/payload/minio/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+      - name: Upload dependency producer evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: psr-test-dependency-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/psr-dependencies-${{ github.run_id }}-${{ github.run_attempt }}/logs/*
+          if-no-files-found: warn
+          retention-days: 30
