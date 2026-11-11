@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"os/exec"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -445,4 +447,86 @@ func TestNativePoolAndInputBoundaries(t *testing.T) {
 	bind(t, missingObserver, r)
 	_, err = missingObserver.Reconcile(context.Background(), "execution")
 	wantErr(t, err, ErrUnconfirmed)
+}
+
+// TestAdmissionProcessHelper is entered only by the owned subprocess fixture.
+// It executes the real journal/Lua against the parent's owned miniredis service.
+func TestAdmissionProcessHelper(t *testing.T) {
+	if os.Getenv("PSR_INTERNAL_QUERYJOURNAL_SYNTHETIC_HELPER") != "1" {
+		return
+	}
+	client := redis.NewClient(&redis.Options{Addr: os.Getenv("PSR_INTERNAL_QUERYJOURNAL_SYNTHETIC_ADDR"), MaxRetries: -1})
+	defer client.Close()
+	m, err := New(client, Scope{Target: "fixed_target", PolicyScope: "fixed_policy"}, "deployment_epoch_1", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	admitted, busy := 0, 0
+	for i := 0; i < 20; i++ {
+		_, err = m.Reserve(context.Background(), binding(fmt.Sprintf("%s_%d", os.Getenv("PSR_INTERNAL_QUERYJOURNAL_SYNTHETIC_PREFIX"), i)), time.Now().Add(time.Minute))
+		if err == nil {
+			admitted++
+		} else if errors.Is(err, ErrBusy) {
+			busy++
+		} else {
+			t.Fatalf("helper reserve: %v", err)
+		}
+	}
+	fmt.Printf("JOURNAL_HELPER admitted=%d busy=%d\n", admitted, busy)
+}
+
+func TestAdmissionAcrossIndependentProcesses(t *testing.T) {
+	m, _, s := fixture(t, nil)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	makeCommand := func(prefix string) *exec.Cmd {
+		cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestAdmissionProcessHelper$", "-test.v")
+		cmd.Env = append(os.Environ(), "PSR_INTERNAL_QUERYJOURNAL_SYNTHETIC_HELPER=1", "PSR_INTERNAL_QUERYJOURNAL_SYNTHETIC_ADDR="+s.Addr(), "PSR_INTERNAL_QUERYJOURNAL_SYNTHETIC_PREFIX="+prefix)
+		return cmd
+	}
+	parse := func(output string) (int, int) {
+		t.Helper()
+		for _, line := range strings.Split(output, "\n") {
+			var admitted, busy int
+			if n, err := fmt.Sscanf(line, "JOURNAL_HELPER admitted=%d busy=%d", &admitted, &busy); err == nil && n == 2 {
+				return admitted, busy
+			}
+		}
+		t.Fatalf("missing helper counts: %s", output)
+		return 0, 0
+	}
+	cmd1, cmd2 := makeCommand("process_1"), makeCommand("process_2")
+	var out1, out2 strings.Builder
+	cmd1.Stdout, cmd1.Stderr = &out1, &out1
+	cmd2.Stdout, cmd2.Stderr = &out2, &out2
+	if err := cmd1.Start(); err != nil {
+		t.Fatal(err)
+	}
+	if err := cmd2.Start(); err != nil {
+		_ = cmd1.Wait()
+		t.Fatal(err)
+	}
+	err1, err2 := cmd1.Wait(), cmd2.Wait()
+	if err1 != nil || err2 != nil {
+		t.Fatalf("helpers %v %v: %s %s", err1, err2, out1.String(), out2.String())
+	}
+	a1, b1 := parse(out1.String())
+	a2, b2 := parse(out2.String())
+	if a1+a2 != 2 || b1+b2 != 38 {
+		t.Fatalf("two processes admitted=%d busy=%d", a1+a2, b1+b2)
+	}
+	// Both admitting processes have exited. A fresh process must still see busy,
+	// even after the synthetic service clock advances beyond all record deadlines.
+	s.FastForward(24 * time.Hour)
+	output, err := makeCommand("process_restarted").CombinedOutput()
+	if err != nil {
+		t.Fatalf("restarted helper %v: %s", err, output)
+	}
+	a3, b3 := parse(string(output))
+	if a3 != 0 || b3 != 20 {
+		t.Fatalf("restart admitted=%d busy=%d", a3, b3)
+	}
+	if ttl := s.TTL(m.key); ttl != 0 {
+		t.Fatalf("reservation TTL %v", ttl)
+	}
 }
