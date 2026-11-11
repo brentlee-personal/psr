@@ -78,16 +78,24 @@ func Analyze(ctx context.Context, sql string, policy Policy) (Analysis, error) {
 	if policy.Dialect != "postgresql" || policy.Relations == nil || policy.Functions == nil {
 		return Analysis{}, ErrUnverified
 	}
-	if len(sql) == 0 || len(sql) > 65536 {
+	// The native parser accepts a C string and would otherwise parse only the
+	// prefix before NUL while the digest binds the entire Go string.
+	if len(sql) == 0 || len(sql) > 65536 || strings.IndexByte(sql, 0) >= 0 {
 		return Analysis{}, ErrRejected
 	}
 	for key, relation := range policy.Relations {
+		if err := ctx.Err(); err != nil {
+			return Analysis{}, err
+		}
 		parts := strings.Split(key, ".")
 		if len(parts) != 2 || !identifier(parts[0]) || !identifier(parts[1]) || len(relation.Columns) == 0 {
 			return Analysis{}, ErrUnverified
 		}
 		seen := map[string]bool{}
 		for _, c := range relation.Columns {
+			if err := ctx.Err(); err != nil {
+				return Analysis{}, err
+			}
 			if !identifier(c) || seen[c] {
 				return Analysis{}, ErrUnverified
 			}
@@ -147,16 +155,27 @@ func dangerous(s string) bool {
 	// never grants permission: every callable name still needs a trusted policy.
 	return strings.HasPrefix(s, "pg_") || strings.HasPrefix(s, "lo_") || strings.HasPrefix(s, "dblink") || s == "set_config" || s == "nextval" || s == "setval" || s == "query_to_xml" || s == "table_to_xml" || s == "database_to_xml" || s == "schema_to_xml"
 }
-func (a *analyzer) enter() error {
+
+// reserve charges AST traversal, catalog materialization and projected columns
+// against the same work budget, before any corresponding append/allocation.
+func (a *analyzer) reserve(count int) error {
 	if err := a.ctx.Err(); err != nil {
 		return err
 	}
-	a.nodes++
-	a.depth++
-	if a.nodes > 4096 || a.depth > 64 {
-		a.depth--
+	if count < 0 || count > 4096-a.nodes {
 		return ErrRejected
 	}
+	a.nodes += count
+	return nil
+}
+func (a *analyzer) enter() error {
+	if err := a.reserve(1); err != nil {
+		return err
+	}
+	if a.depth >= 64 {
+		return ErrRejected
+	}
+	a.depth++
 	return nil
 }
 func names(nodes []*pg.Node) ([]string, error) {
@@ -261,6 +280,9 @@ func (a *analyzer) selectStmt(s *pg.SelectStmt, outer []scope, inherited ctes) (
 	env := append([]scope{current}, outer...)
 	var output []Column
 	for _, n := range s.TargetList {
+		if err := a.reserve(1); err != nil {
+			return nil, err
+		}
 		r := n.GetResTarget()
 		if r == nil || len(r.Indirection) > 0 {
 			return nil, ErrRejected
@@ -269,7 +291,7 @@ func (a *analyzer) selectStmt(s *pg.SelectStmt, outer []scope, inherited ctes) (
 			if r.Name != "" {
 				return nil, ErrRejected
 			}
-			cols, err := wildcard(ref, current)
+			cols, err := a.wildcard(ref, current)
 			if err != nil {
 				return nil, err
 			}
@@ -286,6 +308,9 @@ func (a *analyzer) selectStmt(s *pg.SelectStmt, outer []scope, inherited ctes) (
 				ss, _ := names(ref.Fields)
 				name = ss[len(ss)-1]
 			}
+		}
+		if err := a.reserve(1); err != nil {
+			return nil, err
 		}
 		output = append(output, Column{Name: name, Origins: origins})
 	}
@@ -335,7 +360,13 @@ func (a *analyzer) from(n *pg.Node, cs ctes) (scope, error) {
 			}
 			a.relations[key] = true
 			complete = p.Complete
+			if err := a.reserve(len(p.Columns)); err != nil {
+				return nil, err
+			}
 			for _, name := range p.Columns {
+				if err := a.ctx.Err(); err != nil {
+					return nil, err
+				}
 				cols = append(cols, Column{Name: name, Origins: []Origin{{Relation: key, Column: name}}})
 			}
 		}
@@ -396,7 +427,10 @@ func hasStar(r *pg.ColumnRef) bool {
 	}
 	return false
 }
-func wildcard(r *pg.ColumnRef, current scope) ([]Column, error) {
+func (a *analyzer) wildcard(r *pg.ColumnRef, current scope) ([]Column, error) {
+	if err := a.reserve(1); err != nil {
+		return nil, err
+	}
 	if len(r.Fields) < 1 || len(r.Fields) > 2 || r.Fields[len(r.Fields)-1].GetAStar() == nil {
 		return nil, ErrRejected
 	}
@@ -409,13 +443,24 @@ func wildcard(r *pg.ColumnRef, current scope) ([]Column, error) {
 	}
 	var cols []Column
 	for _, b := range current {
+		if err := a.ctx.Err(); err != nil {
+			return nil, err
+		}
 		if qualifier != "" && b.name != qualifier {
 			continue
 		}
 		if !b.complete {
 			return nil, ErrRejected
 		}
-		cols = append(cols, b.columns...)
+		if err := a.reserve(len(b.columns)); err != nil {
+			return nil, err
+		}
+		for _, column := range b.columns {
+			if err := a.ctx.Err(); err != nil {
+				return nil, err
+			}
+			cols = append(cols, column)
+		}
 	}
 	if len(cols) == 0 {
 		return nil, ErrRejected
@@ -430,6 +475,7 @@ func resolve(r *pg.ColumnRef, env []scope) ([]Origin, error) {
 	for _, level := range env {
 		hits := 0
 		qualifierExists := false
+		unknownMatch := false
 		var found []Origin
 		for _, b := range level {
 			if len(ns) == 2 {
@@ -438,12 +484,22 @@ func resolve(r *pg.ColumnRef, env []scope) ([]Origin, error) {
 				}
 				qualifierExists = true
 			}
+			bindingHit := false
 			for _, c := range b.columns {
 				if c.Name == ns[len(ns)-1] {
 					hits++
+					bindingHit = true
 					found = c.Origins
 				}
 			}
+			// A subset catalog cannot prove this namespace lacks the name.
+			// It could shadow an outer column or make a same-level hit ambiguous.
+			if len(ns) == 1 && !b.complete && !bindingHit {
+				unknownMatch = true
+			}
+		}
+		if unknownMatch {
+			return nil, ErrRejected
 		}
 		if hits == 1 {
 			return found, nil

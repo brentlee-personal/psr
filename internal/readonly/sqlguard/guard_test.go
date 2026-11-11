@@ -9,6 +9,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	pg "github.com/pganalyze/pg_query_go/v6"
 )
 
 // All names and grants here are synthetic parser fixtures. They do not identify
@@ -232,6 +234,71 @@ func TestAnalyzeWildcardBudget(t *testing.T) {
 		got, err := Analyze(context.Background(), "SELECT w.* FROM synthetic.wide w", p)
 		if !errors.Is(err, ErrRejected) || !reflect.DeepEqual(got, Analysis{}) {
 			t.Fatalf("expansion budget must reject, got columns=%d err=%v", len(got.Columns), err)
+		}
+	})
+}
+
+func TestAnalyzeIncompleteNamespaceExplicitQualification(t *testing.T) {
+	for name, sql := range map[string]string{
+		"qualified_outer":            "SELECT (SELECT v.amount FROM synthetic.subset s LIMIT 1) AS total FROM synthetic.visible v",
+		"qualified_same_level":       "SELECT v.amount FROM synthetic.visible v, synthetic.subset s",
+		"authorized_subset_column":   "SELECT id FROM synthetic.subset",
+		"complete_derived_namespace": "SELECT (SELECT amount FROM (SELECT id FROM synthetic.subset) s LIMIT 1) AS total FROM synthetic.visible v",
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := Analyze(context.Background(), sql, fixturePolicy()); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
+// Cancellation is triggered at a deterministic context-check boundary inside
+// the real expansion loop, without timing or replacing the implementation.
+type cancelAtCheck struct {
+	context.Context
+	cancel context.CancelFunc
+	checks int
+	after  int
+}
+
+func (c *cancelAtCheck) Err() error {
+	c.checks++
+	if c.checks == c.after {
+		c.cancel()
+	}
+	return c.Context.Err()
+}
+
+func TestAnalyzeWildcardBudgetBoundaryAndCancellation(t *testing.T) {
+	t.Run("ordinary_expansion", func(t *testing.T) {
+		sql := "SELECT " + strings.Repeat("v.*,", 9) + "v.* FROM synthetic.visible v"
+		got, err := Analyze(context.Background(), sql, fixturePolicy())
+		if err != nil || len(got.Columns) != 30 {
+			t.Fatalf("small expansion failed: columns=%d err=%v", len(got.Columns), err)
+		}
+	})
+	tree, err := pg.Parse("SELECT v.* FROM synthetic.visible v")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ref := tree.Stmts[0].Stmt.GetSelectStmt().TargetList[0].GetResTarget().Val.GetColumnRef()
+	current := scope{{name: "v", complete: true, columns: []Column{{Name: "id"}, {Name: "amount"}, {Name: "scope_id"}}}}
+	t.Run("insufficient_remaining_budget", func(t *testing.T) {
+		a := analyzer{ctx: context.Background(), nodes: 4094}
+		cols, err := a.wildcard(ref, current)
+		if !errors.Is(err, ErrRejected) || cols != nil {
+			t.Fatalf("expansion must reject before returning partial columns: %+v %v", cols, err)
+		}
+	})
+	t.Run("cancel_during_expansion", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		observed := &cancelAtCheck{Context: ctx, cancel: cancel, after: 5}
+		a := analyzer{ctx: observed}
+		cols, err := a.wildcard(ref, current)
+		if !errors.Is(err, context.Canceled) || cols != nil {
+			t.Fatalf("expansion must stop on cancellation: %+v %v", cols, err)
 		}
 	})
 }
