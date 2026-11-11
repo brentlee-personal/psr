@@ -23,9 +23,21 @@ printf 'producer_source=%s application_source=%s started=%s\n' "$PRODUCER" "$SOU
 RUNNER=$(jq -er '.runner' "$LOCK")
 [[ $(sha256sum "$APP/Dockerfile" | cut -d' ' -f1) == $(jq -er '.dockerfile_sha256' "$LOCK") ]]
 # Inputs are copied from reviewed caches, never trusted just because present.
-cp --reflink=auto -a "$INPUT/runtime-resources" "$OUT/work/resources"
-cp --reflink=auto -a "$INPUT/native-libs" "$OUT/work/native"
-rm -rf "$OUT/work/native/rag-tokenizer" # own copy: C++ must rebuild from this source
+copy_locked_files() {
+ local input_root=$1 manifest=$2 destination=$3 hash relative resolved
+ mkdir -p "$destination"
+ while read -r hash relative; do
+  relative=\${relative#./}
+  [[ $hash =~ ^[a-f0-9]{64}$ && $relative != /* && "/$relative/" != */../* && "/$relative/" != */./* ]]
+  resolved=$(realpath "$input_root/$relative")
+  [[ $resolved == "$input_root/"* && -f $resolved ]]
+  mkdir -p "$(dirname "$destination/$relative")"
+  cp --reflink=auto --preserve=mode,timestamps -- "$resolved" "$destination/$relative"
+ done < "$manifest"
+}
+# Copy only allowlisted dependency files; never publish arbitrary cache contents.
+copy_locked_files "$INPUT/runtime-resources" "$RECIPE/resources.sha256" "$OUT/work/resources"
+copy_locked_files "$INPUT/native-libs" "$RECIPE/native.sha256" "$OUT/work/native"
 (cd "$OUT/work/resources" && sha256sum -c "$RECIPE/resources.sha256")
 (cd "$OUT/work/native" && sha256sum -c "$RECIPE/native.sha256")
 BASE_ARCHIVE=$INPUT/$(jq -er '.frozen_base.archive' "$LOCK")
