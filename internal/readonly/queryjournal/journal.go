@@ -130,6 +130,18 @@ var safeID = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)
 var fingerprint = regexp.MustCompile(`^[a-f0-9]{64}$`)
 
 const maxExactInteger = 1<<53 - 1 // Keep counters within portable JSON integer precision.
+
+func nilInterface(value any) bool {
+	if value == nil {
+		return true
+	}
+	v := reflect.ValueOf(value)
+	switch v.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
+		return v.IsNil()
+	}
+	return false
+}
 func validBinding(b Binding) bool {
 	return safeID.MatchString(b.ExecutionID) && safeID.MatchString(b.SourceRef) &&
 		safeID.MatchString(b.PolicyVersion) && fingerprint.MatchString(b.ApprovalFingerprint) &&
@@ -146,6 +158,9 @@ func New(client *redis.Client, scope Scope, epoch string, observer Observer) (*M
 	if client == nil || !safeID.MatchString(scope.Target) || !safeID.MatchString(scope.PolicyScope) || !safeID.MatchString(epoch) {
 		return nil, ErrInvalid
 	}
+	if nilInterface(observer) {
+		observer = nil
+	}
 	digest := sha256.Sum256([]byte(scope.Target + "\x00" + scope.PolicyScope))
 	return &Manager{client: client, scope: scope, epoch: epoch, key: "readonly:queryjournal:v1:{" + hex.EncodeToString(digest[:]) + "}", observer: observer}, nil
 }
@@ -153,15 +168,8 @@ func New(client *redis.Client, scope Scope, epoch string, observer Observer) (*M
 // NewFromNativePool reuses an initialized native Kvrocks pool. The caller must
 // check kvrocks.Get() is nonnil before passing it; no global config is read here.
 func NewFromNativePool(pool NativePool, scope Scope, epoch string, observer Observer) (*Manager, error) {
-	if pool == nil {
+	if nilInterface(pool) {
 		return nil, ErrInvalid
-	}
-	v := reflect.ValueOf(pool)
-	switch v.Kind() {
-	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
-		if v.IsNil() {
-			return nil, ErrInvalid
-		}
 	}
 	return New(pool.GetClient(), scope, epoch, observer)
 }
@@ -196,6 +204,8 @@ return {2, raw}`
 
 // Reserve atomically acquires one of two global slots and creates a record.
 // Duplicate execution IDs always fail, including after confirmed termination.
+// At 4096 retained records admission stops; this module never silently deletes
+// unknown or terminal records. Retention/GC needs a separate explicit policy.
 func (m *Manager) Reserve(ctx context.Context, b Binding, deadline time.Time) (Record, error) {
 	if !validBinding(b) || deadline.IsZero() || !deadline.After(time.Now()) || deadline.UnixMilli() > maxExactInteger {
 		return Record{}, ErrInvalid

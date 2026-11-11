@@ -406,6 +406,13 @@ func TestProvisionNeverResetsExistingScope(t *testing.T) {
 type testNativePool struct{ client *redis.Client }
 
 func (p *testNativePool) GetClient() *redis.Client { return p.client }
+
+type nilObserver struct{}
+
+func (*nilObserver) Observe(context.Context, Record) (Observation, error) {
+	panic("typed-nil observer must not run")
+}
+
 func TestNativePoolAndInputBoundaries(t *testing.T) {
 	m, _, _ := fixture(t, nil)
 	var typedNil *testNativePool
@@ -430,4 +437,12 @@ func TestNativePoolAndInputBoundaries(t *testing.T) {
 	if _, err := m.Read(context.Background(), "absent"); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("read absent: %v", err)
 	}
+	var observer *nilObserver
+	missingObserver, err := New(m.client, m.scope, m.epoch, observer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bind(t, missingObserver, r)
+	_, err = missingObserver.Reconcile(context.Background(), "execution")
+	wantErr(t, err, ErrUnconfirmed)
 }
