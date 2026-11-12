@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
+	"encoding/json"
 	"time"
 	"ragflow/internal/readonly/sqlguard"
 	"ragflow/internal/readonly/sqlresult"
@@ -61,8 +62,28 @@ func (s *Source) Execute(ctx context.Context,approval Approval) (result Result,e
 	if ctx.Err()!=nil{result.Terminal="cancelled";return result,ctx.Err()}
 	if queryErr!=nil || read.Completeness!=sqlresult.Complete || read.RowsClose!=sqlresult.CloseConfirmed{return result,ErrExecution}
 	latest,err:=s.Authority(ctx,p.request.Identity);if err!=nil || latest.SHA256!=p.request.ScopeSHA256{return result,ErrDenied}
+	rows,err:=publicRows(read,p.request.MaxBytes);if err!=nil{return result,err}
 	result.Terminal="completed";result.Complete=true
 	result.Columns=make([]string,len(read.Columns));for i,c:=range read.Columns{result.Columns[i]=c.Name}
-	result.Rows=read.Rows
+	result.Rows=rows
 	return result,nil
+}
+
+// publicRows preserves PostgreSQL decimal text exactly at the public JSON boundary.
+// Other byte cells retain the existing binary representation. Recheck the same
+// bounded payload after conversion rather than relying on its previous size.
+func publicRows(read sqlresult.ReadResult, maxBytes int) ([][]any, error) {
+ rows:=make([][]any,len(read.Rows))
+ for i,row:=range read.Rows {
+  if len(row)!=len(read.Columns){return nil,ErrExecution}
+  rows[i]=append([]any(nil),row...)
+  for j,column:=range read.Columns {
+   if column.DatabaseType!="NUMERIC" && column.DatabaseType!="DECIMAL"{continue}
+   if value,ok:=rows[i][j].([]byte);ok && value!=nil{rows[i][j]=string(value)}
+  }
+ }
+ payload:=struct{Columns []sqlresult.Column `json:"columns"`;Rows [][]any `json:"rows"`}{read.Columns,rows}
+ encoded,err:=json.Marshal(payload)
+ if err!=nil || len(encoded)>maxBytes{return nil,ErrExecution}
+ return rows,nil
 }
