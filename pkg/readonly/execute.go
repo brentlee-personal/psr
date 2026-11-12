@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"time"
 	"ragflow/internal/readonly/sqlguard"
 	"ragflow/internal/readonly/sqlresult"
@@ -46,7 +47,11 @@ func (s *Source) Execute(ctx context.Context,approval Approval) (result Result,e
 	retain:=false;defer func(){if !retain{<-s.slots}}()
 	conn,err:=s.db.Conn(ctx);if err!=nil{return result,ErrExecution}
 	result.CleanupConfirmed=false
-	tx,err:=conn.BeginTx(ctx,&sql.TxOptions{ReadOnly:true,Isolation:sql.LevelReadCommitted})
+	backend,err:=readOwnBackend(ctx,conn,a.Policy)
+	if err!=nil{conn.Close();s.uncertain.Store(true);retain=true;return result,ErrCleanup}
+	// Only Source owns transaction termination. Business QueryContext below
+	// keeps the original caller/deadline; awaitDone cannot race that caller.
+	tx,err:=conn.BeginTx(context.WithoutCancel(ctx),&sql.TxOptions{ReadOnly:true,Isolation:sql.LevelReadCommitted})
 	if err!=nil{conn.Close();s.uncertain.Store(true);retain=true;return result,ErrCleanup}
 	var readOnly string
 	if err:=tx.QueryRowContext(ctx,"SHOW transaction_read_only").Scan(&readOnly);err!=nil || readOnly!="on"{
@@ -58,6 +63,14 @@ func (s *Source) Execute(ctx context.Context,approval Approval) (result Result,e
 	rollbackErr:=tx.Rollback()
 	closeErr:=conn.Close()
 	result.CleanupConfirmed=rollbackErr==nil && closeErr==nil
+	// A failed rollback is not confirmation. After our synchronous Close has
+	// invalidated/joined this logical Conn, accept cancellation retirement only
+	// when an independent RO session confirms this exact server backend is gone.
+	// Unexpected lifecycle errors remain unknown, never normalized to success.
+	if !result.CleanupConfirmed && ctx.Err()!=nil && closeErr==nil &&
+		!errors.Is(rollbackErr,sql.ErrTxDone) && !errors.Is(rollbackErr,sql.ErrConnDone){
+		result.CleanupConfirmed=s.confirmRetiredBackend(ctx,backend,a.Policy)
+	}
 	if !result.CleanupConfirmed{s.uncertain.Store(true);retain=true;return result,ErrCleanup}
 	if ctx.Err()!=nil{result.Terminal="cancelled";return result,ctx.Err()}
 	if queryErr!=nil || read.Completeness!=sqlresult.Complete || read.RowsClose!=sqlresult.CloseConfirmed{return result,ErrExecution}
