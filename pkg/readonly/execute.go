@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"database/sql"
+	"database/sql/driver"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -63,11 +64,14 @@ func (s *Source) Execute(ctx context.Context,approval Approval) (result Result,e
 	rollbackErr:=tx.Rollback()
 	closeErr:=conn.Close()
 	result.CleanupConfirmed=rollbackErr==nil && closeErr==nil
-	// A failed rollback is not confirmation. After our synchronous Close has
-	// invalidated/joined this logical Conn, accept cancellation retirement only
-	// when an independent RO session confirms this exact server backend is gone.
-	// Unexpected lifecycle errors remain unknown, never normalized to success.
-	if !result.CleanupConfirmed && ctx.Err()!=nil && closeErr==nil &&
+	// A failed rollback is not confirmation. The nil-Close case is owned here.
+	// With our uncancelled transaction lifecycle and the user query returned,
+	// this exact ErrBadConn rollback also synchronously runs tx.close ->
+	// Conn.closemuRUnlockCondReleaseConn -> Conn.close before Rollback returns.
+	// Its following ErrConnDone is evidence of that specific retirement chain,
+	// never standalone proof. Both routes still require exact backend exit.
+	controlledRetirement:=closeErr==nil || (rollbackErr==driver.ErrBadConn && closeErr==sql.ErrConnDone)
+	if !result.CleanupConfirmed && ctx.Err()!=nil && controlledRetirement &&
 		!errors.Is(rollbackErr,sql.ErrTxDone) && !errors.Is(rollbackErr,sql.ErrConnDone){
 		result.CleanupConfirmed=s.confirmRetiredBackend(ctx,backend,a.Policy)
 	}
