@@ -29,7 +29,7 @@ var ErrUserTokenUnverified = errors.New("native user identity unverified")
 type userTokenSource struct {
 	db     func() *gorm.DB
 	secret func(context.Context) (string, error)
-	tenant func(context.Context, *entity.User, string) (string, error)
+	tenant func(context.Context, *gorm.DB, *entity.User, string) (string, error)
 }
 
 type signingKeyReader struct{ client *kvrocks.Client }
@@ -48,11 +48,11 @@ func newUserTokenSource() userTokenSource {
 			}
 			return server.GetCurrentSigningKey(ctx, store)
 		},
-		tenant: resolveUserAuthTenant,
+		tenant: resolveStrictNativeTenant,
 	}
 }
 
-func (s userTokenSource) resolve(ctx context.Context, authorization string) (*AuthIdentity, *common.AccessTokenContext, error) {
+func (s userTokenSource) resolve(ctx context.Context, authorization string, db *gorm.DB) (*AuthIdentity, *common.AccessTokenContext, error) {
 	if ctx.Err() != nil {
 		return nil, nil, ErrUserTokenUnverified
 	}
@@ -64,7 +64,6 @@ func (s userTokenSource) resolve(ctx context.Context, authorization string) (*Au
 	if err != nil || len(token.AccessToken) < 32 {
 		return nil, nil, ErrUserTokenDenied
 	}
-	db := s.db()
 	if db == nil {
 		return nil, nil, ErrUserTokenUnverified
 	}
@@ -79,6 +78,8 @@ func (s userTokenSource) resolve(ctx context.Context, authorization string) (*Au
 
 func userTokenStateError(err error) error {
 	switch {
+	case errors.Is(err, ErrUserTokenDenied):
+		return ErrUserTokenDenied
 	case errors.Is(err, gorm.ErrRecordNotFound), errors.Is(err, permission.ErrMembershipNotFound), errors.Is(err, permission.ErrPermissionDenied), errors.Is(err, permission.ErrUnauthenticated):
 		return ErrUserTokenDenied
 	default:
@@ -137,7 +138,8 @@ func (v *UserTokenVerifier) VerifyUserToken(ctx context.Context, authorization s
 	if maxAge < 0 {
 		return VerifiedUserIdentity{}, ErrUserTokenDenied
 	}
-	identity, token, err := v.source.resolve(ctx, authorization)
+	db := v.source.db()
+	identity, token, err := v.source.resolve(ctx, authorization, db)
 	if err != nil {
 		return VerifiedUserIdentity{}, err
 	}
@@ -149,21 +151,24 @@ func (v *UserTokenVerifier) VerifyUserToken(ctx context.Context, authorization s
 	if !now.Before(expiry) {
 		return VerifiedUserIdentity{}, ErrUserTokenDenied
 	}
-	if err := v.checkIdentityState(ctx, identity); err != nil {
+	if err := checkNativeAccount(identity.User); err != nil {
 		return VerifiedUserIdentity{}, err
 	}
 	// Reject known invalid native account/member state before the edition hook:
 	// downstream hooks may report such denials with opaque errors.
-	tenantID, err := v.source.tenant(ctx, identity.User, token.TenantID)
+	tenantID, err := v.source.tenant(ctx, db, identity.User, token.TenantID)
 	if err != nil {
 		return VerifiedUserIdentity{}, userTokenStateError(err)
 	}
 	if tenantID == "" {
 		return VerifiedUserIdentity{}, ErrUserTokenUnverified
 	}
-	if tenantID != token.TenantID {
+	if token.TenantID != "" && tenantID != token.TenantID {
 		return VerifiedUserIdentity{}, ErrUserTokenDenied
 	}
+
+	identity.TenantID = tenantID
+	if err := v.checkIdentityState(ctx, identity, db); err != nil { return VerifiedUserIdentity{}, err }
 
 	// Authority reads may block past the deadline or ignore cancellation. Only
 	// the completion time can establish a currently usable identity.
@@ -181,23 +186,12 @@ func (v *UserTokenVerifier) VerifyUserToken(ctx context.Context, authorization s
 	}, nil
 }
 
-func (v *UserTokenVerifier) checkIdentityState(ctx context.Context, identity *AuthIdentity) error {
+func (v *UserTokenVerifier) checkIdentityState(ctx context.Context, identity *AuthIdentity, db *gorm.DB) error {
 	user := identity.User
-	if user == nil || user.ID == "" {
-		return ErrUserTokenUnverified
-	}
-	if user.Status == nil || user.IsActive == "" {
-		return ErrUserTokenUnverified
-	}
-	if *user.Status != "1" || user.IsActive != "1" {
-		return ErrUserTokenDenied
-	}
-	// CE and system-admin credentials carry no verified active tenant. Never
-	// infer one from user ID or accept an application-supplied tenant instead.
+	if err := checkNativeAccount(user); err != nil { return err }
 	if identity.TenantID == "" {
 		return ErrUserTokenUnverified
 	}
-	db := v.source.db()
 	if db == nil {
 		return ErrUserTokenUnverified
 	}
@@ -236,6 +230,19 @@ func (v *UserTokenVerifier) CheckCurrentIdentity(ctx context.Context, identity V
 		return err
 	}
 	if current.snapshot.UserID != identity.snapshot.UserID || current.snapshot.TenantID != identity.snapshot.TenantID || !current.snapshot.IssuedAt.Equal(identity.snapshot.IssuedAt) || !current.snapshot.ExpiresAt.Equal(identity.snapshot.ExpiresAt) {
+		return ErrUserTokenDenied
+	}
+	return nil
+}
+
+func checkNativeAccount(user *entity.User) error {
+	if user == nil || user.ID == "" {
+		return ErrUserTokenUnverified
+	}
+	if user.Status == nil || user.IsActive == "" {
+		return ErrUserTokenUnverified
+	}
+	if *user.Status != "1" || user.IsActive != "1" {
 		return ErrUserTokenDenied
 	}
 	return nil

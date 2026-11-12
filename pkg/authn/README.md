@@ -1,7 +1,9 @@
 # Strict native user identity
 
 `ragflow/pkg/authn` is an in-process Go interface for an initialized PSR runtime.
-Importing this package does not initialize the runtime. There is no HTTPS
+Importing this package does not initialize the runtime. Standalone consumers may call
+`OpenRuntime(ctx, protectedConfigPath)` once to open native metadata and Kvrocks
+without migrations, engines, workers or key creation. There is no HTTPS
 verification handler in this change. Downstream applications must first adopt
 the candidate source version and wire the verifier explicitly.
 Create one `authn.NewVerifier()` and keep it for all stages of a request:
@@ -31,14 +33,17 @@ inactive/missing membership. `ErrUnverified` identifies unavailable key/state
 sources, missing status evidence, or missing verified active tenant. Both must
 stop protected work; source failure is not a business denial or a grant.
 
-The verified tenant must come from the native edition resolver and must have a
-current active tenant row and joined native membership. This public CE tree's
-resolver discards tenant context and returns empty. Therefore CE verification
-returns `ErrUnverified`; it never invents a tenant from a user ID. EE resolver
-sources are absent from this tree; synthetic resolved-tenant fixtures exercise
-shared checks and do not establish EE resolver behavior. Real EE verification
-requires the downstream implementation, its native signed active tenant, and
-separate runtime evidence. There is no customer organization/store mapping.
+The verified tenant is established inside the native strict verifier, never by
+consumer request fields. Enterprise resolution still delegates to its edition
+resolver. In CE, an explicit signed tenant must have a current valid tenant and
+joined membership; it never falls back to another tenant. A CE token with empty
+tenant can bind only a unique current joined/active native tenant for a known
+non-superuser. Reads retain NULL/unknown states and are bounded to two candidates;
+ambiguity or unknown authority yields ErrUnverified. No user, tenant or membership
+is created. Ordinary login and API-key resolution are unchanged. Rechecking an
+empty-tenant proof repeats uniqueness and rejects any tenant change; it cannot
+turn the old proof into another tenant or refresh issuance. This is native tenant
+identity, not customer organization/store mapping or a business grant.
 
 IssuedAt and native ExpiresAt come from the already authenticated native token
 timestamp. MaxAge zero uses native expiry, positive values only shorten it,

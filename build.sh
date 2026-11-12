@@ -19,7 +19,7 @@ PROJECT_ROOT="$SCRIPT_DIR"
 # Build directories
 CPP_DIR="$PROJECT_ROOT/internal/binding/cpp"
 BUILD_DIR="$CPP_DIR/cmake-build-release"
-RAGFLOW_SERVER_BINARY="$PROJECT_ROOT/bin/ragflow_server"
+RAGFLOW_SERVER_BINARY="${RAGFLOW_SERVER_BINARY:-$PROJECT_ROOT/bin/ragflow_server}"
 RAGFLOW_CLI_BINARY="$PROJECT_ROOT/bin/ragflow-cli"
 
 # Strip symbols from Go binaries (set via --strip / -s)
@@ -813,13 +813,15 @@ build_go() {
 
     echo "Building RAGFlow binary: $RAGFLOW_CLI_BINARY, $RAGFLOW_SERVER_BINARY"
     set -x
+    if [ "${RAGFLOW_GO_MAIN_PACKAGE:-./cmd}" = "./cmd" ]; then
     GOPROXY=${GOPROXY:-https://goproxy.cn,https://proxy.golang.org,direct} CGO_ENABLED=1 \
         go build -tags "$GO_BUILD_TAGS" "${strip_flags[@]}" -o "$RAGFLOW_CLI_BINARY" cmd/ragflow-cli.go
+    fi
 
     GOPROXY=${GOPROXY:-https://goproxy.cn,https://proxy.golang.org,direct} CGO_ENABLED=1 \
         CGO_CFLAGS="$CGO_CFLAGS" CGO_LDFLAGS="$CGO_LDFLAGS" \
         go build -tags "$GO_BUILD_TAGS" "${strip_flags[@]}" -o "$RAGFLOW_SERVER_BINARY" \
-        ./cmd
+        "${RAGFLOW_GO_MAIN_PACKAGE:-./cmd}"
     set +x
 
 
@@ -828,7 +830,9 @@ build_go() {
         exit 1
     fi
 
-    echo -e "${GREEN}✓ Go ragflow-cli built successfully: $RAGFLOW_CLI_BINARY${NC}"
+    if [ "${RAGFLOW_GO_MAIN_PACKAGE:-./cmd}" = "./cmd" ]; then
+        echo -e "${GREEN}✓ Go ragflow-cli built successfully: $RAGFLOW_CLI_BINARY${NC}"
+    fi
     echo -e "${GREEN}✓ Go ragflow_server built successfully: $RAGFLOW_SERVER_BINARY${NC}"
 }
 
@@ -1034,7 +1038,7 @@ run_go_tests() {
         CGO_CFLAGS="$CGO_CFLAGS" CGO_LDFLAGS="$CGO_LDFLAGS" \
         go test -tags "cgo,static${EXTRA_TAGS_COMMA}" -count=1 "$@"
 
-    run_native_tests
+    if [ "${RAGFLOW_TEST_PACKAGES_ONLY:-0}" != "1" ]; then run_native_tests; fi
 }
 
 # Run the unit tests of the native package (DeepDoc det/DLA/TSR/OCR-rec Go

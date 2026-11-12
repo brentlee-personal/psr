@@ -310,6 +310,19 @@ func autoMigrateModels() []interface{} {
 
 // InitDB initialize database connection
 func InitDB(ctx context.Context, migrateDB bool) error {
+	if err := initMetadataConnection(ctx, false); err != nil { return err }
+	if err := migrateMetadataSchema(ctx, DB, migrateDB); err != nil { return err }
+	if err := models.InitProviderManager("conf/models"); err != nil {
+		common.Fatal("Failed to load model providers", zap.Error(err))
+	}
+	common.Info("Model providers loaded successfully")
+	return nil
+}
+
+// InitIdentityDB opens native metadata without migrations or model loading.
+func InitIdentityDB(ctx context.Context) error { return initMetadataConnection(ctx, true) }
+
+func initMetadataConnection(ctx context.Context, identityOnly bool) error {
 	globalConfig := server.GetConfig()
 
 	// The metadata database dialect: mysql/oceanbase share the MySQL wire
@@ -351,6 +364,7 @@ func InitDB(ctx context.Context, migrateDB bool) error {
 	}
 
 	// Connect to database
+	if identityOnly { gormLogLevel = gormLogger.Silent }
 	var err error
 	DB, err = gorm.Open(dialector, &gorm.Config{
 		Logger: gormLogger.Default.LogMode(gormLogLevel),
@@ -373,17 +387,6 @@ func InitDB(ctx context.Context, migrateDB bool) error {
 	sqlDB.SetMaxIdleConns(maxConnections)
 	sqlDB.SetMaxOpenConns(maxConnections)
 	sqlDB.SetConnMaxLifetime(time.Duration(staleTimeout) * time.Second)
-
-	if err = migrateMetadataSchema(ctx, DB, migrateDB); err != nil {
-		return err
-	}
-
-	err = models.InitProviderManager("conf/models")
-	if err != nil {
-		common.Fatal("Failed to load model providers", zap.Error(err))
-	}
-
-	common.Info("Model providers loaded successfully")
 
 	return nil
 }

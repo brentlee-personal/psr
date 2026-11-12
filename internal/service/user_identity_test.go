@@ -58,7 +58,7 @@ func newIdentityFixture(t *testing.T) (*UserTokenVerifier, *gorm.DB, string) {
 	v := &UserTokenVerifier{source: userTokenSource{
 		db:     func() *gorm.DB { return db },
 		secret: func(context.Context) (string, error) { return identityFixtureKey, nil },
-		tenant: func(_ context.Context, _ *entity.User, tenant string) (string, error) { return tenant, nil },
+		tenant: func(_ context.Context, _ *gorm.DB, _ *entity.User, tenant string) (string, error) { return tenant, nil },
 	}}
 	token, err := common.DumpAccessToken(access, "fixture-tenant", identityFixtureKey)
 	if err != nil {
@@ -193,11 +193,11 @@ func TestStrictNativeUserIdentityUnknownSourcesAndCE(t *testing.T) {
 				sqlDB, _ := db.DB()
 				sqlDB.Close()
 			case "tenant-resolver":
-				v.source.tenant = func(context.Context, *entity.User, string) (string, error) {
+				v.source.tenant = func(context.Context, *gorm.DB, *entity.User, string) (string, error) {
 					return "", errors.New("backend-sensitive-details")
 				}
 			case "ce-empty":
-				v.source.tenant = resolveUserAuthTenant
+				v.source.tenant = func(ctx context.Context, _ *gorm.DB, user *entity.User, tenant string) (string,error) { return resolveUserAuthTenant(ctx,user,tenant) }
 			case "nil-account-state":
 				db.Model(&entity.User{}).Where("id = ?", "fixture-user").Update("status", nil)
 			case "nil-membership-state":
@@ -236,7 +236,7 @@ func TestStrictNativeUserIdentityRejectsExpiryDuringStateRead(t *testing.T) {
 	issued, _ := strconv.ParseInt(parts[3], 10, 64)
 	deadline := time.Unix(issued, 0).Add(2 * time.Second)
 	entered := false
-	v.source.tenant = func(_ context.Context, _ *entity.User, tenant string) (string, error) {
+	v.source.tenant = func(_ context.Context, _ *gorm.DB, _ *entity.User, tenant string) (string, error) {
 		entered = true
 		time.Sleep(time.Until(deadline) + 10*time.Millisecond)
 		return tenant, nil
@@ -253,7 +253,7 @@ func TestStrictNativeUserIdentityRejectsCancellationDuringStateRead(t *testing.T
 	v, _, token := newIdentityFixture(t)
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	v.source.tenant = func(_ context.Context, _ *entity.User, tenant string) (string, error) { cancel(); return tenant, nil }
+	v.source.tenant = func(_ context.Context, _ *gorm.DB, _ *entity.User, tenant string) (string, error) { cancel(); return tenant, nil }
 	if _, err := v.VerifyUserToken(ctx, token, 30*time.Minute); !errors.Is(err, ErrUserTokenUnverified) {
 		t.Fatalf("cancelled after state I/O: %v", err)
 	}
@@ -299,7 +299,7 @@ func TestStrictNativeUserIdentityRecheckRejectsExpiryDuringStateRead(t *testing.
 		t.Fatal(err)
 	}
 	deadline := proof.Snapshot().ExpiresAt
-	v.source.tenant = func(_ context.Context, _ *entity.User, tenant string) (string, error) {
+	v.source.tenant = func(_ context.Context, _ *gorm.DB, _ *entity.User, tenant string) (string, error) {
 		time.Sleep(time.Until(deadline) + 10*time.Millisecond)
 		return tenant, nil
 	}
@@ -316,7 +316,7 @@ func TestStrictNativeUserIdentityRecheckRejectsCancellationDuringStateRead(t *te
 	}
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	v.source.tenant = func(_ context.Context, _ *entity.User, tenant string) (string, error) { cancel(); return tenant, nil }
+	v.source.tenant = func(_ context.Context, _ *gorm.DB, _ *entity.User, tenant string) (string, error) { cancel(); return tenant, nil }
 	if err := v.CheckCurrentIdentity(ctx, proof); !errors.Is(err, ErrUserTokenUnverified) {
 		t.Fatalf("recheck cancelled after I/O: %v", err)
 	}
