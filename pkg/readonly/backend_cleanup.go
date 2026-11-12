@@ -29,12 +29,13 @@ func readOwnBackend(ctx context.Context,conn *sql.Conn,policy Policy)(backendIde
  return own,nil
 }
 
-// Called only after a caller cancellation, failed rollback and a successful
-// synchronous sql.Conn.Close. MaxIdleConns remains zero, so that owned Conn is
-// retired rather than reusable. Error codes alone are never proof of cleanup.
-// This independent context authorizes metadata cleanup only, never business SQL.
-func (s *Source) confirmRetiredBackend(caller context.Context,retired backendIdentity,policy Policy)bool{
- ctx,cancel:=context.WithTimeout(context.WithoutCancel(caller),500*time.Millisecond)
+// Called only after query-time cancellation and this Source's synchronous
+// retirement (nil Close, or its exact ErrBadConn rollback/ErrConnDone chain).
+// MaxIdleConns remains zero; error codes alone never prove backend exit.
+// The finite Source-owned context authorizes metadata cleanup only, never SQL
+// beyond the business context. The 500ms probe inherits its earlier deadline.
+func (s *Source) confirmRetiredBackend(lifecycle context.Context,retired backendIdentity,policy Policy)bool{
+ ctx,cancel:=context.WithTimeout(lifecycle,500*time.Millisecond)
  defer cancel()
  observer,err:=s.db.Conn(ctx);if err!=nil{return false}
  closed:=false

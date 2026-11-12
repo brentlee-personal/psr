@@ -50,9 +50,14 @@ func (s *Source) Execute(ctx context.Context,approval Approval) (result Result,e
 	result.CleanupConfirmed=false
 	backend,err:=readOwnBackend(ctx,conn,a.Policy)
 	if err!=nil{conn.Close();s.uncertain.Store(true);retain=true;return result,ErrCleanup}
-	// Only Source owns transaction termination. Business QueryContext below
-	// keeps the original caller/deadline; awaitDone cannot race that caller.
-	tx,err:=conn.BeginTx(context.WithoutCancel(ctx),&sql.TxOptions{ReadOnly:true,Isolation:sql.LevelReadCommitted})
+	// Source owns a finite cleanup tail; business SQL still uses only ctx.
+	// If that tail expires, lifecycle errors remain unknown and latch below.
+	deadline,ok:=ctx.Deadline()
+	if !ok{conn.Close();s.uncertain.Store(true);retain=true;return result,ErrCleanup}
+	lifecycleDeadline:=deadline.Add(500*time.Millisecond)
+	lifecycleCtx,cancelLifecycle:=context.WithDeadline(context.WithoutCancel(ctx),lifecycleDeadline)
+	defer cancelLifecycle() // after synchronous rollback/close/backend confirmation
+	tx,err:=conn.BeginTx(lifecycleCtx,&sql.TxOptions{ReadOnly:true,Isolation:sql.LevelReadCommitted})
 	if err!=nil{conn.Close();s.uncertain.Store(true);retain=true;return result,ErrCleanup}
 	var readOnly string
 	if err:=tx.QueryRowContext(ctx,"SHOW transaction_read_only").Scan(&readOnly);err!=nil || readOnly!="on"{
@@ -61,22 +66,24 @@ func (s *Source) Execute(ctx context.Context,approval Approval) (result Result,e
 		if !result.CleanupConfirmed{s.uncertain.Store(true);retain=true;return result,ErrCleanup};return result,ErrUnverified
 	}
 	read,queryErr:=sqlresult.Query(ctx,tx,p.request.SQL,nil,sqlresult.Limits{MaxRows:p.request.MaxRows,MaxBytes:p.request.MaxBytes})
+	queryCancelErr,queryReturnedAt:=ctx.Err(),time.Now()
 	rollbackErr:=tx.Rollback()
 	closeErr:=conn.Close()
 	result.CleanupConfirmed=rollbackErr==nil && closeErr==nil
 	// A failed rollback is not confirmation. The nil-Close case is owned here.
-	// With our uncancelled transaction lifecycle and the user query returned,
+	// With our Source-owned lifecycle and the user query returned,
 	// this exact ErrBadConn rollback also synchronously runs tx.close ->
 	// Conn.closemuRUnlockCondReleaseConn -> Conn.close before Rollback returns.
 	// Its following ErrConnDone is evidence of that specific retirement chain,
 	// never standalone proof. Both routes still require exact backend exit.
 	controlledRetirement:=closeErr==nil || (rollbackErr==driver.ErrBadConn && closeErr==sql.ErrConnDone)
-	if !result.CleanupConfirmed && ctx.Err()!=nil && controlledRetirement &&
+	if !result.CleanupConfirmed && queryCancelErr!=nil && queryReturnedAt.Before(lifecycleDeadline) && controlledRetirement &&
 		!errors.Is(rollbackErr,sql.ErrTxDone) && !errors.Is(rollbackErr,sql.ErrConnDone){
-		result.CleanupConfirmed=s.confirmRetiredBackend(ctx,backend,a.Policy)
+		result.CleanupConfirmed=s.confirmRetiredBackend(lifecycleCtx,backend,a.Policy)
 	}
 	if !result.CleanupConfirmed{s.uncertain.Store(true);retain=true;return result,ErrCleanup}
-	if ctx.Err()!=nil{result.Terminal="cancelled";return result,ctx.Err()}
+	if queryCancelErr!=nil{result.Terminal="cancelled";return result,queryCancelErr}
+	if ctx.Err()!=nil{return result,ctx.Err()} // expiry during cleanup is not query cancellation
 	if queryErr!=nil || read.Completeness!=sqlresult.Complete || read.RowsClose!=sqlresult.CloseConfirmed{return result,ErrExecution}
 	latest,err:=s.Authority(ctx,p.request.Identity);if err!=nil || latest.SHA256!=p.request.ScopeSHA256{return result,ErrDenied}
 	rows,err:=publicRows(read,p.request.MaxBytes);if err!=nil{return result,err}
