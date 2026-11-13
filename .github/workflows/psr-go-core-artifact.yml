@@ -11,6 +11,8 @@ permissions:
 
 jobs:
   linux-amd64:
+    env:
+      GOPROXY: "https://proxy.golang.org|https://goproxy.cn|direct"
     runs-on: ubuntu-24.04
     container:
       image: infiniflow/github_action_runner:latest

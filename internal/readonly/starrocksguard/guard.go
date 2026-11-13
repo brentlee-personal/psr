@@ -100,7 +100,7 @@ func Validate(policy Policy) error {
 	}
 	names := map[string]bool{}
 	for _, r := range policy.Relations {
-		if !path(r.Logical, 2) || !path(r.Physical, 3) || names[r.Logical] || len(r.Columns) == 0 || len(r.Columns) > 256 || len(r.Filters) == 0 {
+		if !path(r.Logical, 2) || !path(r.Physical, 3) || names[r.Logical] || len(r.Columns) == 0 || len(r.Columns) > 256 || len(r.Filters["group_id"]) == 0 || len(r.Filters["store_code"]) == 0 {
 			return ErrRejected
 		}
 		names[r.Logical] = true
@@ -113,7 +113,24 @@ func Validate(policy Policy) error {
 			if r.Columns[column] == "" || len(values) == 0 || len(values) > 100 {
 				return ErrRejected
 			}
+			kind := strings.ToUpper(strings.TrimSpace(r.Columns[column]))
+			if i := strings.IndexAny(kind, "( "); i >= 0 {
+				kind = kind[:i]
+			}
+			expected := ""
+			switch kind {
+			case "CHAR", "VARCHAR", "STRING":
+				expected = "string"
+			case "TINYINT", "SMALLINT", "INT", "INTEGER", "BIGINT", "LARGEINT":
+				expected = "integer"
+			}
+			if expected == "" {
+				return ErrRejected
+			}
 			for _, v := range values {
+				if v.Kind != expected {
+					return ErrRejected
+				}
 				if len(v.Value) > 192 || (v.Kind != "string" && v.Kind != "integer") || (v.Kind == "integer" && !integer.MatchString(v.Value)) {
 					return ErrRejected
 				}
@@ -166,9 +183,13 @@ func Compile(ctx context.Context, sql string, policy Policy) (Analysis, error) {
 	for _, f := range policy.Functions {
 		functions[strings.ToLower(f)] = true
 	}
+	dateAliases := map[string]*p.ColName{}
 	for _, e := range root.SelectExprs {
 		if a, ok := e.(*p.AliasedExpr); ok && !a.As.IsEmpty() {
 			aliases[a.As.String()] = true
+			if c, ok := a.Expr.(*p.ColName); ok {
+				dateAliases[a.As.String()] = c
+			}
 		}
 	}
 	bindings := map[*p.AliasedTableExpr]bound{}
@@ -240,6 +261,12 @@ func Compile(ctx context.Context, sql string, policy Policy) (Analysis, error) {
 			return false
 		}
 		relation, ok := resolve(column)
+		if !ok && column.Qualifier.IsEmpty() {
+			if source := dateAliases[column.Name.String()]; source != nil {
+				column = source
+				relation, ok = resolve(source)
+			}
+		}
 		return ok && relation.DateEncodings[column.Name.String()] == "yyyyMMdd"
 	}
 	err = p.Walk(func(node p.SQLNode) (bool, error) {

@@ -72,6 +72,14 @@ func validateStarRocks(p Policy) error {
 			return ErrUnverified
 		}
 	}
+	if len(sr.KnowledgeChunks) == 0 || len(sr.KnowledgeChunks) > 64 {
+		return ErrUnverified
+	}
+	for id, contentHash := range sr.KnowledgeChunks {
+		if len(id) == 0 || len(id) > 192 || !digest.MatchString(contentHash) {
+			return ErrUnverified
+		}
+	}
 	if starrocksguard.Validate(starrocksguard.Policy{Relations: sr.Relations, Functions: sr.Functions}) != nil {
 		return ErrUnverified
 	}
@@ -299,7 +307,8 @@ func (s *Source) executeStarRocks(ctx context.Context, p *approvalProof) (result
 	}
 	result.CleanupConfirmed = false
 	if prepareStarRocks(ctx, conn, 30) != nil {
-		result.CleanupConfirmed = conn.Close() == nil
+		closeErr := conn.Close()
+		result.CleanupConfirmed = closeErr == nil && ctx.Err() == nil
 		if !result.CleanupConfirmed {
 			s.uncertain.Store(true)
 			retain = true

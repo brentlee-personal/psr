@@ -8,6 +8,7 @@ import (
 // StarRocksPolicy binds actual metadata and versioned physical mappings. Scope
 // filters originate only in the protected native-user policy, never model JSON.
 type StarRocksPolicy struct {
+	KnowledgeChunks   map[string]string         `json:"knowledge_chunks"`
 	AsOf              string                    `json:"as_of,omitempty"`
 	CatalogSHA256     string                    `json:"catalog_sha256"`
 	MappingSHA256     string                    `json:"mapping_sha256"`

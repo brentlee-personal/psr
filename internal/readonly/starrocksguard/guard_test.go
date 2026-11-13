@@ -8,8 +8,8 @@ import (
 
 func policy() Policy {
 	return Policy{Relations: []Relation{
-		{Logical: "facts.sales", Physical: "lake.facts.sales_daily", Columns: map[string]string{"group_id": "VARCHAR", "id": "BIGINT", "amount": "DECIMAL(30,10)", "dt": "VARCHAR"}, Filters: map[string][]Value{"group_id": {{Kind: "string", Value: "tenant-one"}}}, DateEncodings: map[string]string{"dt": "yyyyMMdd"}},
-		{Logical: "dims.products", Physical: "lake.dims.products", Columns: map[string]string{"group_id": "BIGINT", "id": "BIGINT", "name": "VARCHAR"}, Filters: map[string][]Value{"group_id": {{Kind: "integer", Value: "17"}}}},
+		{Logical: "facts.sales", Physical: "lake.facts.sales_daily", Columns: map[string]string{"group_id": "VARCHAR", "store_code": "VARCHAR", "id": "BIGINT", "amount": "DECIMAL(30,10)", "dt": "VARCHAR"}, Filters: map[string][]Value{"group_id": {{Kind: "string", Value: "tenant-one"}}, "store_code": {{Kind: "string", Value: "store-one"}}}, DateEncodings: map[string]string{"dt": "yyyyMMdd"}},
+		{Logical: "dims.products", Physical: "lake.dims.products", Columns: map[string]string{"group_id": "BIGINT", "store_code": "VARCHAR", "id": "BIGINT", "name": "VARCHAR"}, Filters: map[string][]Value{"group_id": {{Kind: "integer", Value: "17"}}, "store_code": {{Kind: "string", Value: "store-one"}}}},
 	}, Functions: []string{"sum", "round", "count"}}
 }
 func TestScopedJoinCompilesVersionedPhysicalCatalog(t *testing.T) {
@@ -39,7 +39,7 @@ func TestScopeCannotBeRemovedByModelPredicate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(result.SQL, "where `group_id` in ('tenant-one')) as `s`") {
+	if !strings.Contains(result.SQL, "where `group_id` in ('tenant-one') and `store_code` in ('store-one')) as `s`") {
 		t.Fatal("scope was applied after caller predicate")
 	}
 }
@@ -72,5 +72,35 @@ func TestUnsupportedOrInvalidDateDoesNotReadEmptyScopeSilently(t *testing.T) {
 		if _, err := Compile(context.Background(), "SELECT id FROM facts.sales WHERE "+predicate, policy()); err == nil {
 			t.Fatal("unknown encoded date admitted")
 		}
+	}
+}
+
+func TestEveryRelationRequiresExactGroupAndStoreTypes(t *testing.T) {
+	for _, key := range []string{"group_id", "store_code"} {
+		p := policy()
+		delete(p.Relations[0].Filters, key)
+		if Validate(p) == nil {
+			t.Fatal("incomplete protected scope admitted")
+		}
+	}
+	p := policy()
+	p.Relations[0].Filters["group_id"][0].Kind = "integer"
+	p.Relations[0].Filters["group_id"][0].Value = "3"
+	if Validate(p) == nil {
+		t.Fatal("VARCHAR scope admitted numeric coercion")
+	}
+	p = policy()
+	p.Relations[1].Filters["group_id"][0].Kind = "string"
+	if Validate(p) == nil {
+		t.Fatal("integer scope admitted string conversion")
+	}
+}
+func TestDateEncodingDirectProjectionAlias(t *testing.T) {
+	result, err := Compile(context.Background(), "SELECT dt AS d FROM facts.sales GROUP BY dt HAVING d BETWEEN '2026-08-10' AND '2026-08-16'", policy())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(result.SQL, "2026-08-") || !strings.Contains(result.SQL, "20260810") || !strings.Contains(result.SQL, "20260816") {
+		t.Fatal("date alias silently kept ISO encoding")
 	}
 }
