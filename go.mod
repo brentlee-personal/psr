@@ -3,6 +3,7 @@ module ragflow
 go 1.27
 
 require (
+	github.com/xwb1989/sqlparser v0.0.0-20180606152119-120387863bf2
 	cloud.google.com/go v0.123.0
 	cloud.google.com/go/bigquery v1.82.0
 	cloud.google.com/go/storage v1.63.0

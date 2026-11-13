@@ -19,6 +19,7 @@ func (s *Source) Approve(ctx context.Context,request Request) (Approval,error) {
 	if s==nil || s.uncertain.Load() || request.MaxRows<1 || request.MaxRows>100 || request.MaxBytes<1 || request.MaxBytes>1<<20 || request.Timeout<=0 || request.Timeout>30*time.Second || !digest.MatchString(request.Fingerprint){return Approval{},ErrUnverified}
 	a,err:=s.Authority(ctx,request.Identity);if err!=nil{return Approval{},err}
 	if request.ScopeSHA256!=a.SHA256{return Approval{},ErrDenied}
+ if s.dialect=="starrocks"{return s.approveStarRocks(ctx,request,a)}
 	names:=make([]string,len(a.Policy.Columns));for i,c:=range a.Policy.Columns{names[i]=c.Name}
 	functions:=map[string]bool{};for _,f:=range a.Policy.Functions{functions[f]=true}
 	analysis,err:=sqlguard.Analyze(ctx,request.SQL,sqlguard.Policy{Dialect:"postgresql",Relations:map[string]sqlguard.Relation{a.Policy.Schema+"."+a.Policy.Table:{Columns:names,Complete:true}},Functions:functions})
@@ -40,6 +41,7 @@ func (s *Source) Execute(ctx context.Context,approval Approval) (result Result,e
 	if s==nil || p==nil || p.issuer!=s || !p.used.CompareAndSwap(false,true){return Result{},ErrDenied}
 	result=Result{Fingerprint:p.request.Fingerprint,Terminal:"failed",CleanupConfirmed:true}
 	if s.uncertain.Load() || !time.Now().Before(p.expires){return result,ErrDenied}
+ if s.dialect=="starrocks"{return s.executeStarRocks(ctx,p)}
 	ctx,cancel:=context.WithTimeout(ctx,p.request.Timeout);defer cancel()
 	ctx,deadlineCancel:=context.WithDeadline(ctx,p.expires);defer deadlineCancel()
 	a,err:=s.Authority(ctx,p.request.Identity);if err!=nil{return result,err}

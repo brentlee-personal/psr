@@ -22,6 +22,8 @@ var (
 type Column struct { Name string `json:"name"`; Type string `json:"type"` }
 // Policy is a protected current test-source grant, not an HTTP/model payload.
 type Policy struct {
+ Dialect string `json:"dialect,omitempty"`
+ StarRocks *StarRocksPolicy `json:"starrocks,omitempty"`
 	SourceID string `json:"source_id"`
 	Database string `json:"database"`
 	Role string `json:"readonly_role"`
@@ -56,6 +58,7 @@ type Request struct {
 }
 type Approval struct { proof *approvalProof }
 type approvalProof struct {
+ compiledSQL string
 	issuer *Source
 	request Request
 	id string
@@ -69,6 +72,7 @@ func (a Approval) ID() string { if a.proof==nil{return ""};return a.proof.id }
 func (a Approval) Fingerprint() string { if a.proof==nil{return ""};return a.proof.request.Fingerprint }
 func (a Approval) ExpiresAt() time.Time { if a.proof==nil{return time.Time{}};return a.proof.expires }
 type Result struct {
+ Summary *ResultSummary
 	Fingerprint string
 	Terminal string
 	CleanupConfirmed bool
@@ -77,6 +81,7 @@ type Result struct {
 	Rows [][]any
 }
 type Source struct {
+ dialect string
 	db *sql.DB
 	verifier *authn.Verifier
 	policyPath string

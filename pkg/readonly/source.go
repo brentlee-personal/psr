@@ -65,19 +65,25 @@ func connectionFiles(path string) (string,string,error) {
 // creates a database/role/table, runs migrations or accepts a model-supplied DSN.
 func Open(ctx context.Context,policyPath,connectionPath string,verifier *authn.Verifier) (*Source,error) {
 	if verifier==nil || ctx==nil{return nil,ErrUnverified}
-	dsn,connectionHash,err:=connectionFiles(connectionPath);if err!=nil{return nil,err}
-	db,err:=sql.Open("postgres",dsn);if err!=nil{return nil,ErrUnverified}
+	raw,err:=protected(policyPath);if err!=nil{return nil,initializationFailure("policy_read")};var initial Policy;if decode(raw,&initial)!=nil{return nil,initializationFailure("policy_decode")}
+ dialect:=initial.Dialect;if dialect==""{dialect="postgresql"};if dialect!="postgresql" && dialect!="starrocks"{return nil,initializationFailure("unsupported_dialect")}
+ connection:=connectionFiles;driverName:="postgres";if dialect=="starrocks"{connection=starrocksConnection;driverName="mysql"}
+ dsn,connectionHash,err:=connection(connectionPath);if err!=nil{return nil,initializationFailure("connection_reference")}
+ db,err:=sql.Open(driverName,dsn);if err!=nil{return nil,initializationFailure("driver_registration")}
 	db.SetMaxOpenConns(2);db.SetMaxIdleConns(0)
-	s:=&Source{db:db,verifier:verifier,policyPath:policyPath,connectionPath:connectionPath,connectionHash:connectionHash,slots:make(chan struct{},2)}
-	if _,err:=s.readPolicy();err!=nil{db.Close();return nil,err}
-	if err:=db.PingContext(ctx);err!=nil{db.Close();return nil,ErrUnverified}
+	s:=&Source{dialect:dialect,db:db,verifier:verifier,policyPath:policyPath,connectionPath:connectionPath,connectionHash:connectionHash,slots:make(chan struct{},2)}
+	if _,err:=s.readPolicy();err!=nil{db.Close();return nil,initializationFailure("active_source_policy")}
+	if err:=db.PingContext(ctx);err!=nil{db.Close();return nil,initializationFailure("connection_ping")}
 	return s,nil
 }
 func (s *Source) readPolicy() (Authority,error) {
-	_,connectionHash,err:=connectionFiles(s.connectionPath);if err!=nil || connectionHash!=s.connectionHash{return Authority{},ErrUnverified}
+	connection:=connectionFiles;if s.dialect=="starrocks"{connection=starrocksConnection}
+ _,connectionHash,err:=connection(s.connectionPath);if err!=nil || connectionHash!=s.connectionHash{return Authority{},ErrUnverified}
 	raw,err:=protected(s.policyPath);if err!=nil{return Authority{},err}
 	var p Policy
-	if decode(raw,&p)!=nil || !identifier.MatchString(p.Database) || !identifier.MatchString(p.Role) || !identifier.MatchString(p.Schema) || !identifier.MatchString(p.Table) || p.ExpiresAt.IsZero() || len(p.Columns)==0 || len(p.Columns)>64 || len(p.Functions)>32 {return Authority{},ErrUnverified}
+	if decode(raw,&p)!=nil{return Authority{},ErrUnverified}
+ dialect:=p.Dialect;if dialect==""{dialect="postgresql"};expected:=s.dialect;if expected==""{expected="postgresql"};if dialect!=expected{return Authority{},ErrUnverified}
+ if dialect=="starrocks"{if validateStarRocks(p)!=nil{return Authority{},ErrUnverified}} else if p.StarRocks!=nil || !identifier.MatchString(p.Database) || !identifier.MatchString(p.Role) || !identifier.MatchString(p.Schema) || !identifier.MatchString(p.Table) || p.ExpiresAt.IsZero() || len(p.Columns)==0 || len(p.Columns)>64 || len(p.Functions)>32 {return Authority{},ErrUnverified}
 	for _,v:=range []string{p.SourceID,p.UserID,p.TenantID,p.RelationID,p.ConnectionRef,p.ReadonlyIdentityRef,p.TargetID,p.SnapshotRef,p.EnforcementRef,p.LimitsRef}{if v=="" || len(v)>192{return Authority{},ErrUnverified}}
 	for _,v:=range []string{p.KnowledgeSHA256,p.PlannerSHA256,p.DataBindingSHA256}{if !digest.MatchString(v){return Authority{},ErrUnverified}}
 	seen:=map[string]bool{}
@@ -95,6 +101,7 @@ func (s *Source) Authority(ctx context.Context,identity authn.VerifiedIdentity) 
 	if err:=s.CheckIdentity(ctx,identity);err!=nil{return Authority{},err}
 	a,err:=s.readPolicy();if err!=nil{return Authority{},err};p:=a.Policy;snapshot:=identity.Snapshot()
 	if snapshot.UserID!=p.UserID || snapshot.TenantID!=p.TenantID{return Authority{},ErrDenied}
+ if s.dialect=="starrocks"{return s.starrocksAuthority(ctx,a)}
 	var database,user,session string;var super,createRole,createDB,replicate,bypass bool
 	err=s.db.QueryRowContext(ctx,"SELECT current_database(), current_user, session_user, rolsuper, rolcreaterole, rolcreatedb, rolreplication, rolbypassrls FROM pg_catalog.pg_roles WHERE rolname=current_user").Scan(&database,&user,&session,&super,&createRole,&createDB,&replicate,&bypass)
 	if err!=nil || database!=p.Database || user!=p.Role || session!=p.Role || super || createRole || createDB || replicate || bypass{return Authority{},ErrUnverified}
