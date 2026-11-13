@@ -41,6 +41,11 @@ jobs:
       - name: Build and package pinned source
         run: bash psr/package-go-core.sh
 
+      - name: Test protected readonly source and result contracts
+        env:
+          RAGFLOW_TEST_PACKAGES_ONLY: "1"
+        run: bash build.sh --test ./internal/readonly/... ./pkg/readonly
+
       - name: Upload binary payload
         id: upload
         uses: actions/upload-artifact@v4
