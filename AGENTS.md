@@ -117,6 +117,8 @@ Rules:
 - `unit` (no tag) must stay free of external-service dependencies so `bash build.sh --test` runs without MySQL/MinIO/ES/Infinity/LLM. The native CGO static libraries (`office_oxide`/`pdfium`/`pdf_oxide`) are still required at build time and are wired by `build.sh --test`; that is expected, not an external service.
 
 ## Working Rules
+
+- Before creating or restoring an additional worktree on this host, read `/data/brent/workspace/AGENTS.md` and use its project-specific worktree directory convention.
 - When reviewing documentation or code, inspect the full affected path and report all verifiable findings in one review; do not return after only a few findings and expose further issues in later rounds.
 - When handling review comments, independently verify each substantive claim against the current code or tests before accepting, rejecting, or acting on it.
 - Before editing, inspect the nearest code path that actually owns the behavior.
