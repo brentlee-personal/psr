@@ -345,6 +345,10 @@ func maskConfigCredentials(value any) any {
 				settings[key] = "******"
 				continue
 			}
+			if host, ok := child.(string); ok && strings.EqualFold(key, "host") {
+				settings[key] = common.RedactURLUserInfo(host)
+				continue
+			}
 			settings[key] = maskConfigCredentials(child)
 		}
 		return settings
@@ -354,6 +358,11 @@ func maskConfigCredentials(value any) any {
 			settings[i] = maskConfigCredentials(child)
 		}
 		return settings
+	case string:
+		if strings.Contains(value, "://") {
+			return common.RedactURLUserInfo(value)
+		}
+		return value
 	default:
 		return value
 	}
