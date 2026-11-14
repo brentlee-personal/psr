@@ -201,6 +201,7 @@ require (
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/oapi-codegen/runtime v1.4.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.4.3 // indirect
+	github.com/pganalyze/pg_query_go/v6 v6.2.5
 	github.com/philhofer/fwd v1.2.0 // indirect
 	github.com/phpdave11/gofpdi v1.0.14-0.20211212211723-1f10f9844311 // indirect
 	github.com/pierrec/lz4/v4 v4.1.18 // indirect
