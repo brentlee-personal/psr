@@ -183,13 +183,18 @@ type TenantMemberItem struct {
 // GetMembersByTenantID returns all non-owner members of a tenant with user details.
 // update_date is formatted as "2006-01-02T15:04:05" (no timezone) to match the Python API.
 func (dao *UserTenantDAO) GetMembersByTenantID(ctx context.Context, db *gorm.DB, tenantID string) ([]*TenantMemberItem, error) {
+	dateFormat := "DATE_FORMAT(user.update_date, '%Y-%m-%dT%H:%i:%s')"
+	if isPostgreSQLMetaDB(db) {
+		dateFormat = "to_char(user.update_date, 'YYYY-MM-DD\"T\"HH24:MI:SS')"
+	}
+
 	var results []*TenantMemberItem
 	err := db.WithContext(ctx).Table("user_tenant").
 		Select("user_tenant.id, user_tenant.user_id, user_tenant.role, user_tenant.status, "+
-			"user.nickname, user.email, user.avatar, user.is_authenticated, "+
-			"user.status AS is_active, user.is_anonymous, user.is_superuser, "+
-			"DATE_FORMAT(user.update_date, '%Y-%m-%dT%H:%i:%s') AS update_date").
-		Joins("JOIN user ON user_tenant.user_id = user.id").
+			metadataSQL(db, "user.nickname, user.email, user.avatar, user.is_authenticated, ")+
+			metadataSQL(db, "user.status AS is_active, user.is_anonymous, user.is_superuser, ")+
+			metadataSQL(db, dateFormat+" AS update_date")).
+		Joins(metadataSQL(db, "JOIN user ON user_tenant.user_id = user.id")).
 		Where("user_tenant.tenant_id = ? AND user_tenant.status IN ? AND user_tenant.role != ?",
 			tenantID, []string{
 				entity.TenantMembershipStatusJoined,
@@ -204,8 +209,8 @@ func (dao *UserTenantDAO) GetMembersByTenantID(ctx context.Context, db *gorm.DB,
 func (dao *UserTenantDAO) GetTenantsByUserID(ctx context.Context, db *gorm.DB, userID string) ([]*TenantInfoByUserID, error) {
 	var results []*TenantInfoByUserID
 	err := db.WithContext(ctx).Table("user_tenant").
-		Select("user_tenant.tenant_id, user_tenant.role, user_tenant.status, user.nickname, user.email, user.avatar, user.update_date").
-		Joins("JOIN user ON user_tenant.tenant_id = user.id").
+		Select(metadataSQL(db, "user_tenant.tenant_id, user_tenant.role, user_tenant.status, user.nickname, user.email, user.avatar, user.update_date")).
+		Joins(metadataSQL(db, "JOIN user ON user_tenant.tenant_id = user.id")).
 		Where("user_tenant.user_id = ? AND user_tenant.status IN ?", userID, []string{
 			entity.TenantMembershipStatusJoined,
 			entity.TenantMembershipStatusInvited,

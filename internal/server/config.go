@@ -198,6 +198,9 @@ func GetAllConfigs() ([]map[string]interface{}, error) {
 		mysqlConfig := globalConfig.GetMySQLConfig()
 		exportedMySQLConfigs := mysqlConfig.ExportConfigs()
 		allConfigs = append(allConfigs, exportedMySQLConfigs)
+	case "postgres":
+		postgresConfig := globalConfig.GetPostgreSQLConfig()
+		allConfigs = append(allConfigs, postgresConfig.ExportConfigs())
 	case "vastbase":
 		vastbaseConfig := globalConfig.GetVastbaseMetaConfig()
 		allConfigs = append(allConfigs, vastbaseConfig.ExportConfigs())
@@ -345,6 +348,10 @@ func maskConfigCredentials(value any) any {
 				settings[key] = "******"
 				continue
 			}
+			if host, ok := child.(string); ok && strings.EqualFold(key, "host") {
+				settings[key] = common.RedactURLUserInfo(host)
+				continue
+			}
 			settings[key] = maskConfigCredentials(child)
 		}
 		return settings
@@ -354,6 +361,11 @@ func maskConfigCredentials(value any) any {
 			settings[i] = maskConfigCredentials(child)
 		}
 		return settings
+	case string:
+		if strings.Contains(value, "://") {
+			return common.RedactURLUserInfo(value)
+		}
+		return value
 	default:
 		return value
 	}

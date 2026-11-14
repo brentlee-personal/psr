@@ -239,7 +239,7 @@ func (dao *UserCanvasVersionDAO) LatestIDsByCanvasIDs(ctx context.Context, db *g
 // Mirrors the released-version lookup in Python's get_agent handler.
 func (dao *UserCanvasVersionDAO) GetLatestReleased(ctx context.Context, db *gorm.DB, canvasID string) (*entity.UserCanvasVersion, error) {
 	var v entity.UserCanvasVersion
-	err := db.WithContext(ctx).Where("user_canvas_id = ? AND `release` = ?", canvasID, true).
+	err := db.WithContext(ctx).Where(metadataSQL(db, "user_canvas_id = ? AND `release` = ?"), canvasID, true).
 		Order("update_time DESC").
 		First(&v).Error
 	if err != nil {
@@ -266,7 +266,7 @@ func (dao *UserCanvasVersionDAO) GetLatestReleaseTimes(ctx context.Context, db *
 	var rows []row
 	err := db.WithContext(ctx).Model(&entity.UserCanvasVersion{}).
 		Select("user_canvas_id, MAX(create_time) AS release_time").
-		Where("user_canvas_id IN ? AND `release` = ?", canvasIDs, true).
+		Where(metadataSQL(db, "user_canvas_id IN ? AND `release` = ?"), canvasIDs, true).
 		Group("user_canvas_id").
 		Scan(&rows).Error
 	if err != nil {

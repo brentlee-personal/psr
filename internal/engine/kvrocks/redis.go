@@ -354,6 +354,16 @@ func (r *Client) Exist(ctx context.Context, key string) (bool, error) {
 
 // Get gets value by key
 func (r *Client) Get(ctx context.Context, key string) (string, error) {
+	return r.get(ctx, key, true)
+}
+
+// GetSensitive reads an authority value without logging backend errors. The
+// caller must return a sanitized error and must not log the returned value.
+func (r *Client) GetSensitive(ctx context.Context, key string) (string, error) {
+	return r.get(ctx, key, false)
+}
+
+func (r *Client) get(ctx context.Context, key string, logErrors bool) (string, error) {
 	if r.client == nil {
 		return "", nil
 	}
@@ -362,7 +372,9 @@ func (r *Client) Get(ctx context.Context, key string) (string, error) {
 		return "", nil
 	}
 	if err != nil {
-		common.Warn("Redis Get error", zap.String("key", key), zap.Error(err))
+		if logErrors {
+			common.Warn("Redis Get error", zap.String("key", key), zap.Error(err))
+		}
 		return "", err
 	}
 	return val, nil

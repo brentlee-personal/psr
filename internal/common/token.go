@@ -40,6 +40,8 @@ const accessTokenContextVersion = "v2"
 type AccessTokenContext struct {
 	AccessToken string
 	TenantID    string
+	IssuedAt    time.Time
+	ExpiresAt   time.Time
 }
 
 // ExtractAccessTokenContext extracts the access token and tenant context from
@@ -97,6 +99,8 @@ func ExtractAccessTokenContext(authorization, secretKey string) (*AccessTokenCon
 	return &AccessTokenContext{
 		AccessToken: string(accessTokenBytes),
 		TenantID:    string(tenantIDBytes),
+		IssuedAt:    time.Unix(timestamp, 0).UTC(),
+		ExpiresAt:   time.Unix(timestamp, 0).UTC().Add(accessTokenExpireSeconds * time.Second),
 	}, nil
 }
 
