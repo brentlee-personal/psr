@@ -189,12 +189,10 @@ func TestParseDatabaseConfigAcceptsVastbaseType(t *testing.T) {
 	}
 }
 
-func TestParseDatabaseConfigRejectsStandardPostgreSQL(t *testing.T) {
-	t.Setenv("DB_TYPE", "postgres")
-	v := viper.New()
-	c := &Config{}
-	if err := c.ParseDatabaseConfig(v); err == nil || !strings.Contains(err.Error(), "database type postgres is not supported") {
-		t.Fatalf("ParseDatabaseConfig(postgres) error = %v, want unsupported database type", err)
+func TestParseDatabaseConfigRejectsUnknownDatabaseType(t *testing.T) {
+	t.Setenv("DB_TYPE", "not-a-database")
+	if err := (&Config{}).ParseDatabaseConfig(viper.New()); err == nil {
+		t.Fatal("unknown database type must be rejected")
 	}
 }
 

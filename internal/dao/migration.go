@@ -182,6 +182,20 @@ func migrateNameColumnWidths(ctx context.Context, db *gorm.DB) error {
 // dropped before the new key column can be promoted. The legacy uniqueness
 // guarantee is preserved by a unique index on the old key columns.
 func migrateTenantLLMPrimaryKey(ctx context.Context, db *gorm.DB) error {
+	if isPostgreSQLMetaDB(db) {
+		if !db.WithContext(ctx).Migrator().HasTable("tenant_llm") {
+			return nil
+		}
+		ok, err := isAutoIncrementColumn(ctx, db, "tenant_llm", "id")
+		if err != nil {
+			return err
+		}
+		if ok {
+			return nil
+		}
+		return fmt.Errorf("legacy PostgreSQL tenant_llm primary key requires an explicit reviewed migration")
+	}
+
 	if !db.WithContext(ctx).Migrator().HasTable("tenant_llm") {
 		return nil
 	}
@@ -525,7 +539,7 @@ func migrateIngestionLogRunIdentity(ctx context.Context, db *gorm.DB) error {
 		}
 		if !migrator.HasColumn(&entity.IngestionTaskLog{}, "event_type") {
 			if err := db.WithContext(ctx).Exec(
-				"ALTER TABLE ingestion_task_log ADD COLUMN event_type tinyint NOT NULL DEFAULT 4",
+				metadataColumnDDL(db, "ALTER TABLE ingestion_task_log ADD COLUMN event_type tinyint NOT NULL DEFAULT 4"),
 			).Error; err != nil && !isDuplicateColumnError(err) {
 				return fmt.Errorf("add ingestion_task_log.event_type: %w", err)
 			}
@@ -573,6 +587,13 @@ func isDuplicateColumnError(err error) bool {
 // duplicate inserts, and the resulting duplicate-key error is mapped back to the
 // "already exists" domain error at the service layer.
 func migrateKnowledgebaseNameUnique(ctx context.Context, db *gorm.DB) error {
+	if isPostgreSQLMetaDB(db) {
+		if !db.WithContext(ctx).Migrator().HasTable("knowledgebase") {
+			return nil
+		}
+		return postgresKnowledgebaseNameUnique(ctx, db)
+	}
+
 	if !db.WithContext(ctx).Migrator().HasTable("knowledgebase") {
 		return nil
 	}
@@ -639,6 +660,13 @@ func migrateKnowledgebaseNameUnique(ctx context.Context, db *gorm.DB) error {
 }
 
 func migrateUserCanvasTitleUnique(ctx context.Context, db *gorm.DB) error {
+	if isPostgreSQLMetaDB(db) {
+		if !db.WithContext(ctx).Migrator().HasTable("user_canvas") {
+			return nil
+		}
+		return postgresUserCanvasTitleUnique(ctx, db)
+	}
+
 	if !db.WithContext(ctx).Migrator().HasTable("user_canvas") {
 		return nil
 	}
@@ -807,7 +835,7 @@ func modifyColumnTypes(ctx context.Context, db *gorm.DB) error {
 	// and AutoMigrate would flip the column back — an ALTER loop measured on
 	// a live instance (spec int NOT NULL vs stored bigint YES). The columns
 	// are already correct there; there is nothing to align.
-	if isVastbaseMetaDB(db) {
+	if isVastbaseMetaDB(db) || isPostgreSQLMetaDB(db) {
 		return nil
 	}
 
@@ -960,7 +988,7 @@ func addColumnIfNotExists(ctx context.Context, db *gorm.DB, tableName, columnNam
 	common.Info("Adding column",
 		zap.String("table", tableName),
 		zap.String("column", columnName))
-	sql := fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", tableName, columnName, columnDef)
+	sql := metadataColumnDDL(db, fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", tableName, columnName, columnDef))
 	return db.WithContext(ctx).Exec(sql).Error
 }
 
@@ -972,6 +1000,12 @@ func addColumnIfNotExists(ctx context.Context, db *gorm.DB, tableName, columnNam
 // as a string: HasColumn only fills Statement.Table for strings and then
 // dereferences the unparsed Statement.Schema.
 func columnExists(ctx context.Context, db *gorm.DB, table, column string) (bool, error) {
+	if isPostgreSQLMetaDB(db) {
+		var n int64
+		err := db.WithContext(ctx).Raw("SELECT count(*) FROM information_schema.columns WHERE table_schema=current_schema() AND table_name=? AND column_name=?", table, column).Scan(&n).Error
+		return n > 0, err
+	}
+
 	var count int64
 	if err := db.WithContext(ctx).Raw(`
 		SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
@@ -985,6 +1019,19 @@ func columnExists(ctx context.Context, db *gorm.DB, table, column string) (bool,
 // columnDefinition returns the stored COLUMN_TYPE and whether the column accepts
 // NULL. ok is false when the column does not exist.
 func columnDefinition(ctx context.Context, db *gorm.DB, table, column string) (columnType string, nullable, ok bool, err error) {
+	if isPostgreSQLMetaDB(db) {
+		var row struct {
+			ColumnType string
+			IsNullable string
+		}
+		err = db.WithContext(ctx).Raw(`SELECT pg_catalog.format_type(a.atttypid,a.atttypmod) AS column_type,
+   CASE WHEN a.attnotnull THEN 'NO' ELSE 'YES' END AS is_nullable
+   FROM pg_catalog.pg_attribute a JOIN pg_catalog.pg_class t ON t.oid=a.attrelid
+   JOIN pg_catalog.pg_namespace n ON n.oid=t.relnamespace
+   WHERE n.nspname=current_schema() AND t.relname=? AND a.attname=? AND a.attnum>0 AND NOT a.attisdropped`, table, column).Scan(&row).Error
+		return row.ColumnType, row.IsNullable == "YES", row.ColumnType != "", err
+	}
+
 	var row struct {
 		ColumnType string
 		IsNullable string
@@ -1001,6 +1048,14 @@ func columnDefinition(ctx context.Context, db *gorm.DB, table, column string) (c
 
 // isAutoIncrementColumn reports whether the column is declared AUTO_INCREMENT.
 func isAutoIncrementColumn(ctx context.Context, db *gorm.DB, table, column string) (bool, error) {
+	if isPostgreSQLMetaDB(db) {
+		var n int64
+		err := db.WithContext(ctx).Raw(`SELECT count(*) FROM information_schema.columns
+   WHERE table_schema=current_schema() AND table_name=? AND column_name=?
+   AND (is_identity='YES' OR column_default LIKE 'nextval(%')`, table, column).Scan(&n).Error
+		return n > 0, err
+	}
+
 	var count int64
 	if err := db.WithContext(ctx).Raw(`
 		SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
@@ -1014,6 +1069,16 @@ func isAutoIncrementColumn(ctx context.Context, db *gorm.DB, table, column strin
 
 // primaryKeyColumns lists the current PRIMARY KEY columns in key order.
 func primaryKeyColumns(ctx context.Context, db *gorm.DB, table string) ([]string, error) {
+	if isPostgreSQLMetaDB(db) {
+		var cols []string
+		err := db.WithContext(ctx).Raw(`SELECT a.attname FROM pg_index i
+   JOIN pg_class t ON t.oid=i.indrelid JOIN pg_namespace n ON n.oid=t.relnamespace
+   JOIN LATERAL unnest(i.indkey) WITH ORDINALITY AS k(attnum,seq) ON true
+   JOIN pg_attribute a ON a.attrelid=t.oid AND a.attnum=k.attnum
+   WHERE n.nspname=current_schema() AND t.relname=? AND i.indisprimary ORDER BY k.seq`, table).Scan(&cols).Error
+		return cols, err
+	}
+
 	var columns []string
 	if err := db.WithContext(ctx).Raw(`
 		SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
@@ -1051,6 +1116,10 @@ func dropLegacyPrimaryKey(ctx context.Context, db *gorm.DB, table, keepColumn st
 // Matching on the column set rather than on the index name keeps the migrations
 // idempotent when an equivalent index already exists under another name.
 func hasUniqueIndex(ctx context.Context, db *gorm.DB, table string, columns []string) (bool, error) {
+	if isPostgreSQLMetaDB(db) {
+		return postgresHasUniqueIndex(ctx, db, table, columns)
+	}
+
 	// The column names come from this file's call sites, never from input.
 	quoted := "'" + strings.Join(columns, "', '") + "'"
 	var count int64
@@ -1076,6 +1145,24 @@ func hasUniqueIndex(ctx context.Context, db *gorm.DB, table string, columns []st
 
 // addUniqueIndex creates a unique index over the given columns.
 func addUniqueIndex(ctx context.Context, db *gorm.DB, table, indexName string, columns []string) error {
+	if isPostgreSQLMetaDB(db) {
+		quoted := make([]string, len(columns))
+		for i, c := range columns {
+			quoted[i] = metadataIdentifier(db, c)
+		}
+		if err := db.WithContext(ctx).Exec("CREATE UNIQUE INDEX IF NOT EXISTS " + metadataIdentifier(db, indexName) + " ON " + metadataIdentifier(db, table) + " (" + strings.Join(quoted, ",") + ")").Error; err != nil {
+			return err
+		}
+		valid, err := postgresHasUniqueIndex(ctx, db, table, columns)
+		if err != nil {
+			return err
+		}
+		if !valid {
+			return fmt.Errorf("PostgreSQL unique index %s has an unexpected shape", indexName)
+		}
+		return nil
+	}
+
 	sql := fmt.Sprintf("ALTER TABLE %s ADD UNIQUE INDEX %s (%s)", table, indexName, strings.Join(columns, ", "))
 	if err := db.WithContext(ctx).Exec(sql).Error; err != nil {
 		if isDuplicateIndexErr(err) {
@@ -1089,6 +1176,10 @@ func addUniqueIndex(ctx context.Context, db *gorm.DB, table, indexName string, c
 
 // dropIndexIfExists removes a named index when it is present.
 func dropIndexIfExists(ctx context.Context, db *gorm.DB, table, indexName string) error {
+	if isPostgreSQLMetaDB(db) {
+		return db.WithContext(ctx).Exec("DROP INDEX IF EXISTS " + metadataIdentifier(db, indexName)).Error
+	}
+
 	var count int64
 	if err := db.WithContext(ctx).Raw(`
 		SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS
@@ -1133,9 +1224,9 @@ func isDuplicateIndexErr(err error) bool {
 // duplicates remain.
 func renameDuplicateEmails(ctx context.Context, db *gorm.DB) error {
 	var duplicates []string
-	if err := db.WithContext(ctx).Raw(`
+	if err := db.WithContext(ctx).Raw(metadataSQL(db, `
 		SELECT email FROM user GROUP BY email HAVING COUNT(*) > 1
-	`).Scan(&duplicates).Error; err != nil {
+	`)).Scan(&duplicates).Error; err != nil {
 		return err
 	}
 	if len(duplicates) == 0 {
@@ -1145,10 +1236,10 @@ func renameDuplicateEmails(ctx context.Context, db *gorm.DB) error {
 	common.Warn("Renaming duplicate user emails before adding the unique index", zap.Int("addresses", len(duplicates)))
 	for _, email := range duplicates {
 		var ids []string
-		if err := db.WithContext(ctx).Raw(`
+		if err := db.WithContext(ctx).Raw(metadataSQL(db, `
 			SELECT id FROM user WHERE email = ?
 			ORDER BY is_superuser DESC, create_time ASC
-		`, email).Scan(&ids).Error; err != nil {
+		`), email).Scan(&ids).Error; err != nil {
 			return err
 		}
 		if len(ids) < 2 {
@@ -1156,7 +1247,7 @@ func renameDuplicateEmails(ctx context.Context, db *gorm.DB) error {
 		}
 		for _, id := range ids[1:] {
 			if err := db.WithContext(ctx).Exec(
-				`UPDATE user SET email = ? WHERE id = ?`,
+				metadataSQL(db, `UPDATE user SET email = ? WHERE id = ?`),
 				duplicateEmailAddress(email, id), id,
 			).Error; err != nil {
 				return fmt.Errorf("failed to rename duplicate email %q: %w", email, err)

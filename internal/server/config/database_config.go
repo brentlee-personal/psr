@@ -25,6 +25,7 @@ import (
 
 // DatabaseConfig database configuration
 type DatabaseConfig struct {
+	Postgres PostgreSQLConfig   `mapstructure:"postgres"`
 	MySQL    MySQLConfig        `mapstructure:"mysql"`
 	Vastbase VastbaseMetaConfig `mapstructure:"vastbase"`
 }
@@ -76,6 +77,8 @@ func (c *Config) ParseDatabaseConfig(v *viper.Viper) error {
 		c.parseOceanBaseDatabaseConfig(v)
 	case "vastbase":
 		c.parseVastbaseDatabaseConfig(v)
+	case "postgres":
+		return c.parsePostgreSQLConfig(v)
 	default:
 		return fmt.Errorf("database type %s is not supported", databaseType)
 	}

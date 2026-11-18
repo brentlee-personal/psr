@@ -173,7 +173,7 @@ func (c *Config) GetEnvironments() error {
 	databaseType := common.GetEnvSmall(common.EnvDBType)
 	if databaseType != "" {
 		switch databaseType {
-		case "mysql", "oceanbase", "vastbase":
+		case "mysql", "oceanbase", "vastbase", "postgres":
 			c.environments.DatabaseType = databaseType
 		default:
 			return fmt.Errorf("invalid database type: %s", databaseType)

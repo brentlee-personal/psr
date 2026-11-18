@@ -465,7 +465,7 @@ func migrateTenantModels(ctx context.Context, db *gorm.DB) error {
 			)`, buildTenantModelStatusCondition())
 
 	var rows []tenantLLMSourceRecord
-	if err := scoped.Raw(query).Scan(&rows).Error; err != nil {
+	if err := scoped.Raw(metadataSQL(db, query)).Scan(&rows).Error; err != nil {
 		return err
 	}
 	if len(rows) == 0 {
@@ -908,7 +908,7 @@ func loadInstanceIDsByProvider(db *gorm.DB, providerID, extraInclude, extraExclu
 		query = "SELECT id FROM tenant_model_instance WHERE provider_id = ?"
 		args = []any{providerID}
 	}
-	if err := db.Raw(query, args...).Scan(&rows).Error; err != nil {
+	if err := db.Raw(metadataSQL(db, query), args...).Scan(&rows).Error; err != nil {
 		return nil, err
 	}
 	ids := make([]string, 0, len(rows))
@@ -1265,8 +1265,8 @@ func normalizeModelIDStringColumn(ctx context.Context, db *gorm.DB, table, colum
 		ID    string         `gorm:"column:id"`
 		Value sql.NullString `gorm:"column:value"`
 	}
-	query := fmt.Sprintf("SELECT id AS id, `%s` AS value FROM `%s` WHERE `%s` IS NOT NULL AND `%s` LIKE '%%@%%'", column, table, column, column)
-	if err := db.Raw(query).Scan(&rows).Error; err != nil {
+	query := fmt.Sprintf(metadataSQL(db, "SELECT id AS id, `%s` AS value FROM `%s` WHERE `%s` IS NOT NULL AND `%s` LIKE '%%@%%'"), column, table, column, column)
+	if err := db.Raw(metadataSQL(db, query)).Scan(&rows).Error; err != nil {
 		return err
 	}
 
@@ -1287,8 +1287,13 @@ func normalizeModelIDJSONColumn(ctx context.Context, db *gorm.DB, table, column 
 		ID    string         `gorm:"column:id"`
 		Value sql.NullString `gorm:"column:value"`
 	}
-	query := fmt.Sprintf("SELECT id AS id, `%s` AS value FROM `%s` WHERE `%s` IS NOT NULL AND `%s` != ''", column, table, column, column)
-	if err := db.Raw(query).Scan(&rows).Error; err != nil {
+	query := fmt.Sprintf(metadataSQL(db, "SELECT id AS id, `%s` AS value FROM `%s` WHERE `%s` IS NOT NULL AND `%s` != ''"), column, table, column, column)
+	if isPostgreSQLMetaDB(db) {
+		name := metadataIdentifier(db, column)
+		query = fmt.Sprintf("SELECT id AS id, %s AS value FROM %s WHERE %s IS NOT NULL AND CAST(%s AS text) != ''", name, metadataIdentifier(db, table), name, name)
+	}
+
+	if err := db.Raw(metadataSQL(db, query)).Scan(&rows).Error; err != nil {
 		return err
 	}
 
@@ -1315,10 +1320,10 @@ func applyModelIDUpdates(ctx context.Context, db *gorm.DB, table, column string,
 	if len(updates) == 0 {
 		return nil
 	}
-	statement := fmt.Sprintf("UPDATE `%s` SET `%s` = ? WHERE id = ?", table, column)
+	statement := fmt.Sprintf(metadataSQL(db, "UPDATE `%s` SET `%s` = ? WHERE id = ?"), table, column)
 	return db.Transaction(func(tx *gorm.DB) error {
 		for id, value := range updates {
-			if err := tx.Exec(statement, value, id).Error; err != nil {
+			if err := tx.Exec(metadataSQL(db, statement), value, id).Error; err != nil {
 				return err
 			}
 		}
@@ -1442,8 +1447,8 @@ func sortedTenantModelIDTables() []string {
 
 func ensureTenantModelIDColumn(ctx context.Context, db *gorm.DB, table, column string) error {
 	common.Info("Adding tenant model id column", zap.String("table", table), zap.String("column", column))
-	statement := fmt.Sprintf("ALTER TABLE `%s` ADD COLUMN `%s` VARCHAR(32) NULL", table, column)
-	return db.Exec(statement).Error
+	statement := fmt.Sprintf(metadataSQL(db, "ALTER TABLE `%s` ADD COLUMN `%s` VARCHAR(32) NULL"), table, column)
+	return db.Exec(metadataSQL(db, statement)).Error
 }
 
 // buildTenantModelLookup maps (tenant_id, model_name, provider, model_type) to
@@ -1483,7 +1488,7 @@ func populateTenantModelIDColumn(ctx context.Context, db *gorm.DB, table string,
 		tenantIDExpr = "id"
 	}
 	query := fmt.Sprintf(
-		"SELECT id AS id, %s AS tenant_id, `%s` AS model_name FROM `%s` WHERE (`%s` IS NULL OR `%s` = '' OR LENGTH(`%s`) <> 32) AND `%s` IS NOT NULL AND `%s` != ''",
+		metadataSQL(db, "SELECT id AS id, %s AS tenant_id, `%s` AS model_name FROM `%s` WHERE (`%s` IS NULL OR `%s` = '' OR LENGTH(`%s`) <> 32) AND `%s` IS NOT NULL AND `%s` != ''"),
 		tenantIDExpr, field.legacyColumn, table,
 		field.tenantIDColumn, field.tenantIDColumn, field.tenantIDColumn,
 		field.legacyColumn, field.legacyColumn,
@@ -1494,14 +1499,14 @@ func populateTenantModelIDColumn(ctx context.Context, db *gorm.DB, table string,
 		TenantID  string `gorm:"column:tenant_id"`
 		ModelName string `gorm:"column:model_name"`
 	}
-	if err := db.Raw(query).Scan(&rows).Error; err != nil {
+	if err := db.Raw(metadataSQL(db, query)).Scan(&rows).Error; err != nil {
 		return 0, err
 	}
 	if len(rows) == 0 {
 		return 0, nil
 	}
 
-	updateStatement := fmt.Sprintf("UPDATE `%s` SET `%s` = ? WHERE id = ?", table, field.tenantIDColumn)
+	updateStatement := fmt.Sprintf(metadataSQL(db, "UPDATE `%s` SET `%s` = ? WHERE id = ?"), table, field.tenantIDColumn)
 	updated := 0
 	if err := db.Transaction(func(tx *gorm.DB) error {
 		for _, row := range rows {
@@ -1510,7 +1515,7 @@ func populateTenantModelIDColumn(ctx context.Context, db *gorm.DB, table string,
 				tenantID = row.ID
 			}
 			resolved := resolveTenantModelID(lookup, tenantID, row.ModelName, field.modelType)
-			if err := tx.Exec(updateStatement, resolved, row.ID).Error; err != nil {
+			if err := tx.Exec(metadataSQL(db, updateStatement), resolved, row.ID).Error; err != nil {
 				return err
 			}
 			updated++

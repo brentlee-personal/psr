@@ -45,12 +45,12 @@ func (dao *ChatDAO) ListByResourceIDs(ctx context.Context, db *gorm.DB, resource
 	var chats []*entity.ChatListItem
 	var total int64
 	query := db.WithContext(ctx).Model(&entity.Chat{}).
-		Select(`
+		Select(metadataSQL(db, `
 			dialog.*,
 			user.nickname,
 			user.avatar as tenant_avatar
-		`).
-		Joins("LEFT JOIN user ON dialog.tenant_id = user.id").
+		`)).
+		Joins(metadataSQL(db, "LEFT JOIN user ON dialog.tenant_id = user.id")).
 		Where("dialog.id IN ? AND dialog.status = ?", resourceIDs, "1")
 	if ownerIDs != nil {
 		query = query.Where("dialog.tenant_id IN ?", ownerIDs)

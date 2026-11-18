@@ -67,7 +67,7 @@ func getDatabaseMigrationVersion(ctx context.Context, db *gorm.DB, marker string
 	}
 
 	var value string
-	err := scoped.Raw("SELECT `value` FROM `system_settings` WHERE `name` = ?", marker).Row().Scan(&value)
+	err := scoped.Raw(metadataSQL(db, "SELECT `value` FROM `system_settings` WHERE `name` = ?"), marker).Row().Scan(&value)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return "", nil
