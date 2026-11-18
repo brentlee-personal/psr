@@ -5,45 +5,56 @@ on:
     branches:
       - psr/go-core
   workflow_dispatch:
+    inputs:
+      complete_runtime:
+        description: Build the reviewed complete runtime on the isolated GPU runner
+        required: true
+        type: boolean
+        default: false
+
+      dependency_only:
+        description: Package the four approved test dependencies from upstream digests
+        required: true
+        type: boolean
+        default: false
+
+      dependency_component:
+        description: Produce all approved dependencies or only the reviewed S3 replacement
+        required: true
+        type: choice
+        options: [all, minio]
+        default: all
 
 permissions:
   contents: read
 
 jobs:
   linux-amd64:
+    if: github.event_name == 'push' || (!inputs.complete_runtime && !inputs.dependency_only && inputs.dependency_component == 'all')
     runs-on: ubuntu-24.04
     container:
-      image: infiniflow/github_action_runner:latest
+      image: infiniflow/github_action_runner@sha256:1ac3980a915be9dc9cb51e97dac1864e2d1690dc426b1149d94e2b5edf5157e7
       options: --user 0:0
     steps:
       - name: Check out source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 0
-
+          persist-credentials: false
       - name: Trust the mounted checkout
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
-
       - name: Verify clean source checkout
         run: |
-          if [[ -n "$(git status --porcelain)" ]]; then
-            echo "error: expected a clean checkout before preparing build dependencies" >&2
-            git status --short
-            exit 1
-          fi
-
+          test -z "$(git status --porcelain)"
       - name: Install uv
         uses: astral-sh/setup-uv@v5
-
       - name: Prepare native build dependencies and runtime assets
         run: uv run tools/scripts/download_dev_deps.py
-
       - name: Build and package pinned source
         run: bash psr/package-go-core.sh
-
       - name: Upload binary payload
         id: upload
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: psr-go-core-${{ github.sha }}-linux-amd64
           path: |
@@ -51,13 +62,201 @@ jobs:
             dist/psr-go-core/*.tar.gz.sha256
           if-no-files-found: error
           retention-days: 30
-
       - name: Record artifact identity
         env:
           ARTIFACT_DIGEST: ${{ steps.upload.outputs.artifact-digest }}
         run: |
           {
-            echo "Source commit: \`${GITHUB_SHA}\`"
-            echo "Artifact: \`psr-go-core-${GITHUB_SHA}-linux-amd64\`"
-            echo "Uploaded artifact digest: \`${ARTIFACT_DIGEST}\`"
+            echo "Source commit: `${GITHUB_SHA}`"
+            echo "Artifact: `psr-go-core-${GITHUB_SHA}-linux-amd64`"
+            echo "Uploaded artifact digest: `${ARTIFACT_DIGEST}`"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  complete-runtime:
+    if: github.event_name == 'workflow_dispatch' && inputs.complete_runtime
+    runs-on: [self-hosted, Linux, X64, psr-go-runtime-20261111]
+    timeout-minutes: 120
+    env:
+      HTTP_PROXY: http://127.0.0.1:7897
+      HTTPS_PROXY: http://127.0.0.1:7897
+      NO_PROXY: localhost,127.0.0.1
+    steps:
+      - name: Check out producer control source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          path: control
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Read the reviewed application source lock
+        id: lock
+        env:
+          DEPENDENCY_COMPONENT: ${{ inputs.dependency_component }}
+        shell: bash
+        run: |
+          if [[ "${{ inputs.dependency_only }}" == true ]]; then echo "select one producer target" >&2; exit 2; fi
+          [[ "$DEPENDENCY_COMPONENT" == all ]] || { echo "runtime cannot select a dependency component" >&2; exit 2; }
+          source_sha=$(jq -er '.application_source_sha | select(test("^[a-f0-9]{40}$"))' control/psr/runtime/inputs.lock.json)
+          echo "source_sha=$source_sha" >> "$GITHUB_OUTPUT"
+      - name: Check out exact application source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ steps.lock.outputs.source_sha }}
+          path: application
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Build and verify complete runtime from the locked source
+        shell: bash
+        env:
+          REVIEWED_CACHE: /data/brent/workspace/go-runtime-build-evidence-20261111
+          PSR_APPROVED_TOOLCHAIN_INPUT: /data/brent/workspace/go-core-oci-producer-evidence-20261111/approved-go-toolchain-1.27.3
+        run: |
+          bash control/psr/runtime/produce.sh "$GITHUB_WORKSPACE/application" \
+            "$RUNNER_TEMP/psr-runtime-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            "$REVIEWED_CACHE" "$GITHUB_SHA"
+      - name: Persist GPU build evidence
+        if: always()
+        shell: bash
+        run: |
+          output="$RUNNER_TEMP/psr-runtime-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          receipt="/data/brent/workspace/go-core-oci-producer-evidence-20261111/runs/$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          mkdir -p "$receipt/logs"
+          if [[ -d "$output/logs" ]]; then cp -a "$output/logs/." "$receipt/logs/"; fi
+          if [[ -f "$output/RESULT" ]]; then cp "$output/RESULT" "$receipt/RESULT"; fi
+          for manifest in source-manifest.json runtime-resources.json; do
+            if [[ -f "$output/payload/$manifest" ]]; then cp "$output/payload/$manifest" "$receipt/$manifest"; fi
+          done
+      - name: Upload complete runtime payload
+        id: runtime
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: psr-go-runtime-${{ steps.lock.outputs.source_sha }}-linux-amd64
+          path: ${{ runner.temp }}/psr-runtime-${{ github.run_id }}-${{ github.run_attempt }}/payload/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+      - name: Upload frozen input dependencies
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: psr-go-runtime-inputs-${{ github.sha }}
+          path: ${{ runner.temp }}/psr-runtime-${{ github.run_id }}-${{ github.run_attempt }}/dependencies/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+      - name: Preserve producer evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: psr-go-runtime-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/psr-runtime-${{ github.run_id }}-${{ github.run_attempt }}/logs/*
+            ${{ runner.temp }}/psr-runtime-${{ github.run_id }}-${{ github.run_attempt }}/RESULT
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Record payload identity
+        env:
+          ARTIFACT_ID: ${{ steps.runtime.outputs.artifact-id }}
+          ARTIFACT_DIGEST: ${{ steps.runtime.outputs.artifact-digest }}
+          APPLICATION_SOURCE: ${{ steps.lock.outputs.source_sha }}
+        shell: bash
+        run: |
+          {
+            echo "Application source: $APPLICATION_SOURCE"
+            echo "Producer source: $GITHUB_SHA"
+            echo "Actions run: $GITHUB_RUN_ID attempt $GITHUB_RUN_ATTEMPT"
+            echo "Runtime artifact ID: $ARTIFACT_ID"
+            echo "Runtime ZIP digest: $ARTIFACT_DIGEST"
+            cat "$RUNNER_TEMP/psr-runtime-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT/payload/source-manifest.json"
+            echo "Registry publication, RDS integration and ACK deployment are separate gates."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  test-dependencies:
+    if: github.event_name == 'workflow_dispatch' && inputs.dependency_only && !inputs.complete_runtime
+    runs-on: [self-hosted, Linux, X64, psr-go-runtime-20261111]
+    timeout-minutes: 120
+    env:
+      HTTP_PROXY: http://127.0.0.1:7897
+      HTTPS_PROXY: http://127.0.0.1:7897
+      NO_PROXY: localhost,127.0.0.1
+    steps:
+      - name: Check out dependency producer control
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          path: control
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Fetch exact approved upstream blobs and produce OCI artifacts
+        env:
+          DEPENDENCY_COMPONENT: ${{ inputs.dependency_component }}
+        shell: bash
+        run: |
+          test "$(git -C control rev-parse HEAD)" = "$GITHUB_SHA"
+          output="$RUNNER_TEMP/psr-dependencies-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          mkdir -p "$output/logs"
+          sudo -n docker run --rm --runtime=runc --user "$(id -u):$(id -g)" --env HOME=/tmp --read-only \
+            --cpus=2 --cpuset-cpus=4,5 --memory=2g --pids-limit=128 --network=host \
+            --env GOTOOLCHAIN=local --env GOCACHE=/tmp/gocache \
+            --env HTTPS_PROXY=http://127.0.0.1:7897 --env HTTP_PROXY=http://127.0.0.1:7897 \
+            --tmpfs /tmp:rw,exec,nosuid,nodev,size=512m \
+            --mount "type=bind,src=$GITHUB_WORKSPACE/control,dst=/control,readonly" \
+            --mount "type=bind,src=$output,dst=/output" \
+            --workdir /control --entrypoint /bin/bash \
+            infiniflow/github_action_runner@sha256:1ac3980a915be9dc9cb51e97dac1864e2d1690dc426b1149d94e2b5edf5157e7 \
+            -ec 'go run ./psr/dependencies /output/payload "$1" "$2"' -- "$GITHUB_SHA" "$DEPENDENCY_COMPONENT" \
+            2>&1 | tee "$output/logs/producer.log"
+      - name: Persist dependency evidence
+        if: always()
+        shell: bash
+        run: |
+          output="$RUNNER_TEMP/psr-dependencies-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          receipt="/data/brent/workspace/go-core-oci-producer-evidence-20261111/dependency-runs/$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          mkdir -p "$receipt/logs"
+          if [[ -d "$output/logs" ]]; then cp -a "$output/logs/." "$receipt/logs/"; fi
+          for name in kvrocks nats infinity minio; do
+            if [[ -f "$output/payload/$name/source-manifest.json" ]]; then
+              mkdir -p "$receipt/$name"
+              cp "$output/payload/$name/"*.json "$receipt/$name/"
+            fi
+          done
+      - name: Upload kvrocks OCI payload
+        if: success() && inputs.dependency_component == 'all'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: psr-test-dependency-kvrocks-linux-amd64
+          path: ${{ runner.temp }}/psr-dependencies-${{ github.run_id }}-${{ github.run_attempt }}/payload/kvrocks/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+      - name: Upload nats OCI payload
+        if: success() && inputs.dependency_component == 'all'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: psr-test-dependency-nats-linux-amd64
+          path: ${{ runner.temp }}/psr-dependencies-${{ github.run_id }}-${{ github.run_attempt }}/payload/nats/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+      - name: Upload infinity OCI payload
+        if: success() && inputs.dependency_component == 'all'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: psr-test-dependency-infinity-linux-amd64
+          path: ${{ runner.temp }}/psr-dependencies-${{ github.run_id }}-${{ github.run_attempt }}/payload/infinity/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+      - name: Upload S3 test OCI payload
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: psr-test-dependency-minio-linux-amd64
+          path: ${{ runner.temp }}/psr-dependencies-${{ github.run_id }}-${{ github.run_attempt }}/payload/minio/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+      - name: Upload dependency producer evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: psr-test-dependency-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/psr-dependencies-${{ github.run_id }}-${{ github.run_attempt }}/logs/*
+          if-no-files-found: warn
+          retention-days: 30
