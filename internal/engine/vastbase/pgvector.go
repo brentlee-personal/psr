@@ -149,6 +149,9 @@ func buildPGVectorDSN(cfg config.PGVectorConfig) string {
 	if password != "" {
 		parts = append(parts, fmt.Sprintf("password=%s", quoteDSNValue(password)))
 	}
+	if cfg.SSLRootCert != "" {
+		parts = append(parts, fmt.Sprintf("sslrootcert=%s", quoteDSNValue(cfg.SSLRootCert)))
+	}
 	parts = append(parts,
 		"connect_timeout=30",
 		"statement_timeout=300000",

@@ -27,12 +27,13 @@ func TestParsePGVectorConfigFallbackAndOverrides(t *testing.T) {
 	t.Setenv("DB_TYPE", "postgres")
 	v := viper.New()
 	v.Set("postgres", map[string]interface{}{
-		"host":     "rds.internal",
-		"port":     5432,
-		"user":     "meta_user",
-		"password": "meta_password",
-		"name":     "psr_db",
-		"ssl_mode": "disable",
+		"host":          "rds.internal",
+		"port":          5432,
+		"user":          "meta_user",
+		"password":      "meta_password",
+		"name":          "psr_db",
+		"ssl_mode":      "verify-full",
+		"ssl_root_cert": "/certs/metadata-ca.pem",
 	})
 	v.Set("pgvector", map[string]interface{}{
 		"user":      "worker_user",
@@ -52,10 +53,21 @@ func TestParsePGVectorConfigFallbackAndOverrides(t *testing.T) {
 	}
 
 	got := c.GetPGVectorConfig()
-	if got.Host != "rds.internal" || got.Port != 5432 || got.DBName != "psr_db" || got.SSLMode != "disable" ||
+	if got.Host != "rds.internal" || got.Port != 5432 || got.DBName != "psr_db" || got.SSLMode != "verify-full" ||
+		got.SSLRootCert != "/certs/metadata-ca.pem" ||
 		got.User != "worker_user" || got.Password != "worker_password" || got.TSConfig != "jiebacfg" ||
 		got.MaxConnections != 16 || got.MaxIdleConns != 4 {
 		t.Fatalf("pgvector resolved config = %#v", got)
+	}
+
+	v.Set("pgvector.ssl_mode", "verify-ca")
+	v.Set("pgvector.ssl_root_cert", "/certs/doc-engine-ca.pem")
+	if err := c.ParseDocEngineConfig(v); err != nil {
+		t.Fatal(err)
+	}
+	got = c.GetPGVectorConfig()
+	if got.SSLMode != "verify-ca" || got.SSLRootCert != "/certs/doc-engine-ca.pem" {
+		t.Fatalf("explicit pgvector TLS settings not preserved: mode=%q cert=%q", got.SSLMode, got.SSLRootCert)
 	}
 }
 

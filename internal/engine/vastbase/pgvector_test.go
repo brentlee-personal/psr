@@ -57,8 +57,14 @@ func TestBuildPGVectorDSN(t *testing.T) {
 		t.Fatalf("local default sslmode must be disable, got %q", localDefault)
 	}
 
+	caCfg := config.PGVectorConfig{Host: "pg.example.internal", SSLMode: "verify-ca", SSLRootCert: "/certs/worker's CA.pem"}
+	caDSN := buildPGVectorDSN(caCfg)
+	if !strings.Contains(caDSN, `sslmode='verify-ca'`) || !strings.Contains(caDSN, `sslrootcert='/certs/worker\'s CA.pem'`) {
+		t.Fatalf("private CA DSN = %q", caDSN)
+	}
+
 	t.Setenv("PGVECTOR_DSN", "postgres://u:secret@h:5432/db")
-	if override := buildPGVectorDSN(config.PGVectorConfig{Host: "ignored"}); override != "postgres://u:secret@h:5432/db" {
+	if override := buildPGVectorDSN(caCfg); override != "postgres://u:secret@h:5432/db" {
 		t.Fatalf("PGVECTOR_DSN override = %q", override)
 	}
 }

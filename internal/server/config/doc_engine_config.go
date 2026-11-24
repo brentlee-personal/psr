@@ -109,6 +109,7 @@ type PGVectorConfig struct {
 	Password       string `mapstructure:"password"`
 	DBName         string `mapstructure:"db_name"`
 	SSLMode        string `mapstructure:"ssl_mode"`
+	SSLRootCert    string `mapstructure:"ssl_root_cert"`
 	TSConfig       string `mapstructure:"ts_config"`
 	MaxConnections int    `mapstructure:"max_connections"`
 	MaxIdleConns   int    `mapstructure:"max_idle_conns"`
@@ -151,6 +152,9 @@ func (c *Config) parsePGVectorConfig(v *viper.Viper) {
 	}
 	if v.IsSet("pgvector.ssl_mode") {
 		c.docEngine.PGVector.SSLMode = v.GetString("pgvector.ssl_mode")
+	}
+	if v.IsSet("pgvector.ssl_root_cert") {
+		c.docEngine.PGVector.SSLRootCert = v.GetString("pgvector.ssl_root_cert")
 	}
 	if v.IsSet("pgvector.ts_config") {
 		c.docEngine.PGVector.TSConfig = strings.TrimSpace(v.GetString("pgvector.ts_config"))
@@ -494,6 +498,9 @@ func (c *Config) GetPGVectorConfig() PGVectorConfig {
 	}
 	if cfg.SSLMode == "" {
 		cfg.SSLMode = pg.SSLMode
+	}
+	if cfg.SSLRootCert == "" {
+		cfg.SSLRootCert = pg.SSLRootCert
 	}
 	if cfg.TSConfig == "" {
 		cfg.TSConfig = "jiebacfg"
