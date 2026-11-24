@@ -76,6 +76,8 @@ func (o *OSSStorage) connect(ctx context.Context) error {
 	cfg, err := s3Config.LoadDefaultConfig(ctx,
 		s3Config.WithRegion(o.config.Region),
 		s3Config.WithCredentialsProvider(creds),
+		s3Config.WithRequestChecksumCalculation(aws.RequestChecksumCalculationWhenRequired),
+		s3Config.WithResponseChecksumValidation(aws.ResponseChecksumValidationWhenRequired),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to load OSS config: %w", err)

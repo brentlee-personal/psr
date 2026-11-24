@@ -179,6 +179,8 @@ func (c *S3CompatibleConnector) ensureClient(ctx context.Context) (*s3.Client, e
 		ctx,
 		awssdkconfig.WithRegion(region),
 		awssdkconfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(c.accessKeyID, c.secretKey, "")),
+		awssdkconfig.WithRequestChecksumCalculation(aws.RequestChecksumCalculationWhenRequired),
+		awssdkconfig.WithResponseChecksumValidation(aws.ResponseChecksumValidationWhenRequired),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("load S3-compatible config: %w", err)

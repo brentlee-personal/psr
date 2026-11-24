@@ -3700,7 +3700,7 @@ func sqlScanDialectFor(engineName string) sqlScanDialect {
 	switch {
 	case engine.IsOceanBaseFamily(engineName):
 		return sqlScanDialect{backslashEscapes: true, hashLineComments: true, executableComments: true}
-	case engine.IsVastbase(engineName), engineName == string(engine.EngineSereneDB):
+	case engine.IsVastbase(engineName), engine.IsPGVector(engineName), engineName == string(engine.EngineSereneDB):
 		return sqlScanDialect{dollarQuotes: true, nestedBlockComments: true}
 	default:
 		// Elasticsearch / OpenSearch / unknown: standard literals only.

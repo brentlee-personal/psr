@@ -96,13 +96,44 @@ func isLocalDBHost(host string) bool {
 	return strings.HasPrefix(host, "/")
 }
 
-// Engine is the Vastbase G100 document engine backed by database/sql.
+// Engine is the Vastbase G100 / PostgreSQL pgvector document engine backed by database/sql.
 type Engine struct {
 	db              *sql.DB
 	dbName          string
 	engineType      string
 	dbCompatibility string
+	pgvector        bool
+	tsConfig        string
 	dsnSafe         string
+}
+
+func pingWithRetry(db *sql.DB, label, dsnSafe string) error {
+	var lastErr error
+	connectCtx, cancelConnect := context.WithTimeout(context.Background(), connectionTimeout)
+	defer cancelConnect()
+	for attempt := 0; attempt < connectionAttempts; attempt++ {
+		if connectCtx.Err() != nil {
+			break
+		}
+		pingCtx, cancel := context.WithTimeout(connectCtx, 10*time.Second)
+		lastErr = db.PingContext(pingCtx)
+		cancel()
+		if lastErr == nil {
+			return nil
+		}
+		common.Warn(label+" is not healthy yet, retrying",
+			zap.Int("attempt", attempt+1),
+			zap.Int("max_attempts", connectionAttempts),
+			zap.String("dsn", dsnSafe),
+			zap.Error(lastErr))
+		if attempt+1 < connectionAttempts {
+			select {
+			case <-time.After(connectionRetryInterval):
+			case <-connectCtx.Done():
+			}
+		}
+	}
+	return lastErr
 }
 
 // NewEngine constructs the engine from the Vastbase config. It retries the
@@ -129,32 +160,7 @@ func NewEngine(cfg config.VastbaseConfig) (*Engine, error) {
 		dsnSafe:         redactDSN(dsn),
 	}
 
-	var lastErr error
-	connectCtx, cancelConnect := context.WithTimeout(context.Background(), connectionTimeout)
-	defer cancelConnect()
-	for attempt := 0; attempt < connectionAttempts; attempt++ {
-		if connectCtx.Err() != nil {
-			break
-		}
-		pingCtx, cancel := context.WithTimeout(connectCtx, 10*time.Second)
-		lastErr = db.PingContext(pingCtx)
-		cancel()
-		if lastErr == nil {
-			break
-		}
-		common.Warn("Vastbase is not healthy yet, retrying",
-			zap.Int("attempt", attempt+1),
-			zap.Int("max_attempts", connectionAttempts),
-			zap.String("dsn", e.dsnSafe),
-			zap.Error(lastErr))
-		if attempt+1 < connectionAttempts {
-			select {
-			case <-time.After(connectionRetryInterval):
-			case <-connectCtx.Done():
-			}
-		}
-	}
-	if lastErr != nil {
+	if lastErr := pingWithRetry(db, "Vastbase", e.dsnSafe); lastErr != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("vastbase: connect %s: %w", e.dsnSafe, lastErr)
 	}
@@ -277,6 +283,18 @@ func (e *Engine) distanceOp() string {
 		return "<+>"
 	}
 	return "<=>"
+}
+
+// tsConfigName returns the PostgreSQL text search configuration used for
+// full-text GIN indexing and queries.
+func (e *Engine) tsConfigName() string {
+	if !e.pgvector {
+		return "cn_tokenizer"
+	}
+	if tsConfigPattern.MatchString(e.tsConfig) {
+		return e.tsConfig
+	}
+	return fallbackPGVectorTSConfig
 }
 
 // GetType returns the engine type string.

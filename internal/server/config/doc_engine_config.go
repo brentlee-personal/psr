@@ -30,6 +30,7 @@ type DocEngineConfig struct {
 	SeekDB    OceanBaseConfig     `mapstructure:"seekdb"`
 	SereneDB  SereneDBConfig      `mapstructure:"serenedb"`
 	Vastbase  VastbaseConfig      `mapstructure:"vastbase"`
+	PGVector  PGVectorConfig      `mapstructure:"pgvector"`
 }
 
 // OceanBaseConfig mirrors the existing oceanbase/seekdb service_conf.yaml
@@ -98,6 +99,22 @@ type VastbaseConfig struct {
 	SSLMode string `mapstructure:"ssl_mode"`
 }
 
+// PGVectorConfig holds the native PostgreSQL + pgvector document-engine
+// settings. Empty connection fields fall back to the postgres metadata
+// section when GetPGVectorConfig resolves the effective configuration.
+type PGVectorConfig struct {
+	Host           string `mapstructure:"host"`
+	Port           int    `mapstructure:"port"`
+	User           string `mapstructure:"user"`
+	Password       string `mapstructure:"password"`
+	DBName         string `mapstructure:"db_name"`
+	SSLMode        string `mapstructure:"ssl_mode"`
+	SSLRootCert    string `mapstructure:"ssl_root_cert"`
+	TSConfig       string `mapstructure:"ts_config"`
+	MaxConnections int    `mapstructure:"max_connections"`
+	MaxIdleConns   int    `mapstructure:"max_idle_conns"`
+}
+
 // ParseDocEngineConfig reads every document-engine section from the
 // service configuration into the doc engine settings.
 func (c *Config) ParseDocEngineConfig(v *viper.Viper) error {
@@ -107,7 +124,56 @@ func (c *Config) ParseDocEngineConfig(v *viper.Viper) error {
 	c.parseOceanBaseConfig(v, "seekdb", &c.docEngine.SeekDB)
 	c.parseSereneDBConfig(v)
 	c.parseVastbaseConfig(v)
+	c.parsePGVectorConfig(v)
 	return nil
+}
+
+func (c *Config) parsePGVectorConfig(v *viper.Viper) {
+	c.docEngine.PGVector = PGVectorConfig{
+		TSConfig:       "jiebacfg",
+		MaxConnections: 16,
+		MaxIdleConns:   4,
+	}
+
+	if v.IsSet("pgvector.host") {
+		c.docEngine.PGVector.Host = v.GetString("pgvector.host")
+	}
+	if v.IsSet("pgvector.port") {
+		c.docEngine.PGVector.Port = v.GetInt("pgvector.port")
+	}
+	if v.IsSet("pgvector.user") {
+		c.docEngine.PGVector.User = v.GetString("pgvector.user")
+	}
+	if v.IsSet("pgvector.password") {
+		c.docEngine.PGVector.Password = v.GetString("pgvector.password")
+	}
+	if v.IsSet("pgvector.db_name") {
+		c.docEngine.PGVector.DBName = v.GetString("pgvector.db_name")
+	}
+	if v.IsSet("pgvector.ssl_mode") {
+		c.docEngine.PGVector.SSLMode = v.GetString("pgvector.ssl_mode")
+	}
+	if v.IsSet("pgvector.ssl_root_cert") {
+		c.docEngine.PGVector.SSLRootCert = v.GetString("pgvector.ssl_root_cert")
+	}
+	if v.IsSet("pgvector.ts_config") {
+		c.docEngine.PGVector.TSConfig = strings.TrimSpace(v.GetString("pgvector.ts_config"))
+	}
+	if v.IsSet("pgvector.max_connections") {
+		c.docEngine.PGVector.MaxConnections = v.GetInt("pgvector.max_connections")
+	}
+	if v.IsSet("pgvector.max_idle_conns") {
+		c.docEngine.PGVector.MaxIdleConns = v.GetInt("pgvector.max_idle_conns")
+	}
+	if c.docEngine.PGVector.TSConfig == "" {
+		c.docEngine.PGVector.TSConfig = "jiebacfg"
+	}
+	if c.docEngine.PGVector.MaxConnections <= 0 {
+		c.docEngine.PGVector.MaxConnections = 16
+	}
+	if c.docEngine.PGVector.MaxIdleConns <= 0 {
+		c.docEngine.PGVector.MaxIdleConns = 4
+	}
 }
 
 func (c *Config) parseVastbaseConfig(v *viper.Viper) {
@@ -407,5 +473,58 @@ func (v VastbaseConfig) ExportConfigs() map[string]interface{} {
 		"db_name":         v.DBName,
 		"dbcompatibility": v.DBCompatibility,
 		"ssl_mode":        v.SSLMode,
+	}
+}
+
+// GetPGVectorConfig resolves the pgvector doc-engine settings, falling back to
+// the postgres metadata section for any omitted connection field.
+func (c *Config) GetPGVectorConfig() PGVectorConfig {
+	cfg := c.docEngine.PGVector
+	pg := c.database.Postgres
+	if cfg.Host == "" {
+		cfg.Host = pg.Host
+	}
+	if cfg.Port == 0 {
+		cfg.Port = pg.Port
+	}
+	if cfg.User == "" {
+		cfg.User = pg.User
+	}
+	if cfg.Password == "" {
+		cfg.Password = pg.Password
+	}
+	if cfg.DBName == "" {
+		cfg.DBName = pg.DatabaseName
+	}
+	if cfg.SSLMode == "" {
+		cfg.SSLMode = pg.SSLMode
+	}
+	if cfg.SSLRootCert == "" {
+		cfg.SSLRootCert = pg.SSLRootCert
+	}
+	if cfg.TSConfig == "" {
+		cfg.TSConfig = "jiebacfg"
+	}
+	if cfg.MaxConnections <= 0 {
+		cfg.MaxConnections = 16
+	}
+	if cfg.MaxIdleConns <= 0 {
+		cfg.MaxIdleConns = 4
+	}
+	return cfg
+}
+
+// ExportConfigs returns the pgvector connection settings for admin inspection.
+func (p PGVectorConfig) ExportConfigs() map[string]interface{} {
+	return map[string]interface{}{
+		"host":            p.Host,
+		"port":            p.Port,
+		"user":            p.User,
+		"password":        p.Password,
+		"db_name":         p.DBName,
+		"ssl_mode":        p.SSLMode,
+		"ts_config":       p.TSConfig,
+		"max_connections": p.MaxConnections,
+		"max_idle_conns":  p.MaxIdleConns,
 	}
 }

@@ -66,6 +66,10 @@ func InitDocEngine(ctx context.Context) error {
 			globalEngine, err = serenedb.NewEngine(globalConfig.GetSereneDBConfig())
 		case "vastbase":
 			globalEngine, err = vastbase.NewEngine(globalConfig.GetVastbaseConfig())
+		case "pgvector", "postgres":
+			engineType = string(EnginePGVector)
+			tokenizer.SetEngineType(engineType)
+			globalEngine, err = vastbase.NewPGVectorEngine(globalConfig.GetPGVectorConfig())
 		default:
 			err = fmt.Errorf("unsupported doc engine type: %s", engineType)
 		}

@@ -19,6 +19,7 @@ package vastbase
 import (
 	"encoding/json"
 	"fmt"
+	"ragflow/internal/engine/types"
 	"reflect"
 	"regexp"
 	"sort"
@@ -109,6 +110,30 @@ func buildFilter(condition map[string]interface{}, kind string, columns map[stri
 			continue
 		}
 		switch key {
+		case "and", "or":
+			clauses := types.FilterClauses(value)
+			if len(clauses) == 0 {
+				continue
+			}
+			children := make([]string, 0, len(clauses))
+			for _, child := range clauses {
+				childSQL, childArgs, err := buildFilter(child, kind, columns)
+				if err != nil {
+					return "", nil, err
+				}
+				if childSQL == "" {
+					continue
+				}
+				children = append(children, "("+shiftPlaceholders(childSQL, len(filter.args))+")")
+				filter.args = append(filter.args, childArgs...)
+			}
+			if len(children) > 0 {
+				op := " AND "
+				if key == "or" {
+					op = " OR "
+				}
+				filter.raw("(" + strings.Join(children, op) + ")")
+			}
 		case "exists":
 			column, ok := value.(string)
 			if !ok {

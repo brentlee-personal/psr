@@ -74,8 +74,10 @@ func (b *s3Base) Health(ctx context.Context) bool {
 	}
 	binary := []byte("_t@@@1")
 
-	// Ensure bucket exists
-	if !b.BucketExists(ctx, bucket) {
+	// Ensure bucket exists when using per-logical buckets; in shared-bucket
+	// mode (b.bucket != ""), the physical bucket is pre-provisioned and
+	// object-scoped RAM/IAM roles often lack HeadBucket/CreateBucket.
+	if b.bucket == "" && !b.BucketExists(ctx, bucket) {
 		if err := b.makeBucket(ctx, bucket); err != nil {
 			common.Error("Failed to create bucket for health check", err, zap.String("bucket", bucket), zap.Error(err))
 			return false
@@ -101,8 +103,8 @@ func (b *s3Base) Put(ctx context.Context, bucket, fnm string, binary []byte, ten
 	bucket, fnm = b.resolve(bucket, fnm)
 
 	return retryObjectOp(ctx, 2, func() { b.reconnect(ctx) }, func() error {
-		// Ensure bucket exists
-		if !b.BucketExists(ctx, bucket) {
+		// Ensure bucket exists when using per-logical buckets; see Health above.
+		if b.bucket == "" && !b.BucketExists(ctx, bucket) {
 			if err := b.makeBucket(ctx, bucket); err != nil {
 				common.Error("Failed to create bucket", err, zap.String("bucket", bucket), zap.Error(err))
 				return err

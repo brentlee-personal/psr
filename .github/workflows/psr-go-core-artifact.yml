@@ -48,6 +48,19 @@ jobs:
           RAGFLOW_TEST_PACKAGES_ONLY: "1"
         run: bash build.sh --test ./internal/readonly/... ./pkg/readonly
 
+      - name: Test pgvector doc engine, config, storage, and connector contracts
+        env:
+          RAGFLOW_TEST_PACKAGES_ONLY: "1"
+        run: >-
+          bash build.sh --test
+          ./internal/engine/vastbase/...
+          ./internal/engine
+          ./internal/server/config/...
+          ./internal/server
+          ./internal/storage/...
+          ./internal/syncer/connector/...
+          ./internal/service/nlp/...
+
       - name: Upload binary payload
         id: upload
         uses: actions/upload-artifact@v4

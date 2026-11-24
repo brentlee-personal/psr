@@ -352,3 +352,44 @@ func TestBuildFilterMetadataEmptyChecks(t *testing.T) {
 		t.Fatalf("empty filter = %q", sqlText)
 	}
 }
+
+// TestBuildFilterLogicalOrAnd verifies composite "and"/"or" clauses used by
+// knowledgeCompilationFilter and nested filters preserve placeholder order.
+func TestBuildFilterLogicalOrAnd(t *testing.T) {
+	columns := testColumns()
+	sqlText, args, err := buildFilter(map[string]interface{}{
+		"or": []map[string]interface{}{
+			{"must_not": map[string]interface{}{"exists": "compile_kwd"}},
+			{"scope_kwd": "dataset"},
+		},
+	}, "chunk", columns)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantCompileSQL := `((("compile_kwd" IS NULL OR "compile_kwd" = '')) OR (1=0))`
+	if sqlText != wantCompileSQL || len(args) != 0 {
+		t.Fatalf("compilation or filter = %q args=%#v, want %q nil", sqlText, args, wantCompileSQL)
+	}
+
+	sqlText, args, err = buildFilter(map[string]interface{}{
+		"available_int": 1,
+		"kb_id":         "kb-1",
+		"or": []interface{}{
+			map[string]interface{}{"doc_id": "d1"},
+			map[string]interface{}{
+				"and": []interface{}{
+					map[string]interface{}{"doc_id": "d2"},
+					map[string]interface{}{"docnm_kwd": "a.md"},
+				},
+			},
+		},
+	}, "chunk", columns)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantNestedSQL := `"available_int" = $1 AND "kb_id" = $2 AND (("doc_id" = $3) OR ((("doc_id" = $4) AND ("docnm_kwd" = $5))))`
+	wantArgs := []interface{}{1, "kb-1", "d1", "d2", "a.md"}
+	if sqlText != wantNestedSQL || !reflect.DeepEqual(args, wantArgs) {
+		t.Fatalf("nested and/or filter = %q args=%#v, want %q args=%#v", sqlText, args, wantNestedSQL, wantArgs)
+	}
+}

@@ -100,6 +100,51 @@ func TestInsertChunksRunsDeleteThenInsertInOneTransaction(t *testing.T) {
 	}
 }
 
+// TestInsertChunksDeduplicatesDuplicateIDsWithinBatch verifies that duplicate
+// primary keys within a single batch are collapsed last-write-wins before
+// DELETE and multi-row INSERT so PostgreSQL never hits SQLSTATE 23505.
+func TestInsertChunksDeduplicatesDuplicateIDsWithinBatch(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	engine := newEngineWithDB(config.VastbaseConfig{DBCompatibility: compatPG}, db)
+
+	expectExistingChunkStore(mock, "t1")
+	expectCount(mock, columnCountQuery(), "t1", "q_3_vec")
+	expectCount(mock, indexCountQuery(), "t1", regularIndexName("t1", "q_3_vec_graph"))
+	expectCount(mock, columnCountQuery(), "t1", "q_3_vec")
+	expectListColumns(mock, "t1",
+		[2]string{"id", "varchar"}, [2]string{"kb_id", "varchar"},
+		[2]string{"content_ltks", "text"}, [2]string{"q_3_vec", "text"},
+	)
+
+	mock.ExpectBegin()
+	mock.ExpectExec(regexp.QuoteMeta(`DELETE FROM "t1" WHERE "id" IN ($1, $2)`)).
+		WithArgs("c2", "c1").WillReturnResult(sqlmock.NewResult(0, 2))
+	mock.ExpectExec(regexp.QuoteMeta(
+		`INSERT INTO "t1" ("content_ltks", "id", "kb_id", "q_3_vec") VALUES ($1,$2,$3,$4),($5,$6,$7,$8)`)).
+		WithArgs("mid", "c2", "kb-1", "[0.4,0.5,0.6]", "second", "c1", "kb-1", "[0.7,0.8,0.9]").
+		WillReturnResult(sqlmock.NewResult(0, 2))
+	mock.ExpectCommit()
+
+	inserted, err := engine.InsertChunks(context.Background(), []map[string]interface{}{
+		{"id": "c1", "content_ltks": "first", "q_3_vec": []interface{}{0.1, 0.2, 0.3}},
+		{"id": "c2", "content_ltks": "mid", "q_3_vec": []interface{}{0.4, 0.5, 0.6}},
+		{"id": "c1", "content_ltks": "second", "q_3_vec": []interface{}{0.7, 0.8, 0.9}},
+	}, "t1", "kb-1", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(inserted) != 0 {
+		t.Fatalf("InsertChunks returned %#v, want empty", inserted)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 // A malformed chunk must surface the encode error, not panic: normalizeChunk
 // returns a nil map on failure, and the kb_id backfill used to write into it
 // before the error check.

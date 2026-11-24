@@ -83,3 +83,65 @@ func TestMySQLSyncDocumentLockReleaseAfterCancellation(t *testing.T) {
 		})
 	}
 }
+
+func TestPostgresSyncDocumentLockAcquisitionError(t *testing.T) {
+	pool, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { pool.Close() })
+	lockID := syncDocumentLockID("sync-document:test")
+	wantErr := errors.New("advisory lock failed")
+	mock.ExpectExec(`SELECT pg_advisory_lock\(\$1\)`).WithArgs(lockID).WillReturnError(wantErr)
+
+	unlock, err := acquirePostgresSyncDocumentLock(t.Context(), pool, "sync-document:test")
+	if err == nil || unlock != nil {
+		t.Fatalf("failed acquisition = %v, unlock = %v", err, unlock != nil)
+	}
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("query error = %v", err)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestPostgresSyncDocumentLockReleaseAfterCancellation(t *testing.T) {
+	for _, releaseFails := range []bool{false, true} {
+		name := "release-success"
+		if releaseFails {
+			name = "release-error"
+		}
+		t.Run(name, func(t *testing.T) {
+			pool, mock, err := sqlmock.New()
+			if err != nil {
+				t.Fatal(err)
+			}
+			pool.SetMaxOpenConns(1)
+			lockID := syncDocumentLockID("sync-document:test")
+			mock.ExpectExec(`SELECT pg_advisory_lock\(\$1\)`).WithArgs(lockID).
+				WillReturnResult(sqlmock.NewResult(0, 0))
+			release := mock.ExpectQuery(`SELECT pg_advisory_unlock\(\$1\)`).WithArgs(lockID)
+			if releaseFails {
+				release.WillReturnError(errors.New("unlock unavailable"))
+			} else {
+				release.WillReturnRows(sqlmock.NewRows([]string{"pg_advisory_unlock"}).AddRow(true))
+			}
+			mock.ExpectClose()
+			ctx, cancel := context.WithCancel(t.Context())
+			unlock, err := acquirePostgresSyncDocumentLock(ctx, pool, "sync-document:test")
+			if err != nil {
+				cancel()
+				t.Fatal(err)
+			}
+			cancel()
+			unlock()
+			if err := pool.Close(); err != nil {
+				t.Fatal(err)
+			}
+			if err := mock.ExpectationsWereMet(); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}

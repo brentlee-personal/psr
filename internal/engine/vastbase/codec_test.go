@@ -229,3 +229,30 @@ func TestFieldKeywordClassification(t *testing.T) {
 		}
 	}
 }
+
+func TestNormalizeChunkSanitizesPGInvalidUTF8AndNulBytes(t *testing.T) {
+	bad := string([]byte{'a', 0x00, 0xff, 'b'})
+	document := map[string]interface{}{
+		"id":                  "chunk-nul",
+		"content_with_weight": "门店口径\x00" + bad,
+		"content_ltks":        "foo\x00bar",
+		"important_kwd":       []interface{}{"k1\x00", bad},
+		"custom_field":        "valid中文",
+	}
+	got, err := normalizeChunk(document)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got["content_with_weight"] != "门店口径a\ufffdb" {
+		t.Fatalf("content_with_weight = %#v, want %q", got["content_with_weight"], "门店口径a\ufffdb")
+	}
+	if got["content_ltks"] != "foobar" {
+		t.Fatalf("content_ltks = %#v, want %q", got["content_ltks"], "foobar")
+	}
+	if got["important_kwd"] != "k1###a\ufffdb" {
+		t.Fatalf("important_kwd = %#v, want %q", got["important_kwd"], "k1###a\ufffdb")
+	}
+	if got["custom_field"] != "valid中文" {
+		t.Fatalf("custom_field = %#v, want %q", got["custom_field"], "valid中文")
+	}
+}
