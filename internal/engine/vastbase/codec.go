@@ -25,6 +25,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"ragflow/internal/tokenizer"
 
@@ -119,7 +120,7 @@ func encodeColumnValue(columnName string, value interface{}) (interface{}, error
 			if len(values) == 0 {
 				return nil, nil
 			}
-			return values[0], nil
+			return sanitizePGValue(values[0]), nil
 		}
 	}
 	if integerArrayColumns[columnName] {
@@ -128,7 +129,10 @@ func encodeColumnValue(columnName string, value interface{}) (interface{}, error
 	switch value.(type) {
 	case map[string]interface{}:
 		encoded, err := json.Marshal(value)
-		return string(encoded), err
+		if err != nil {
+			return "", err
+		}
+		return sanitizePGText(string(encoded)), nil
 	}
 	if fieldKeyword(columnName) {
 		if values, ok := interfaceSlice(value); ok {
@@ -136,10 +140,10 @@ func encodeColumnValue(columnName string, value interface{}) (interface{}, error
 			for _, item := range values {
 				parts = append(parts, stringValue(item))
 			}
-			return strings.Join(parts, keywordSeparator), nil
+			return sanitizePGText(strings.Join(parts, keywordSeparator)), nil
 		}
 	}
-	return value, nil
+	return sanitizePGValue(value), nil
 }
 
 // encodeIntegerArray flattens position_int's two-dimensional [[page, x1, y1,
@@ -199,7 +203,7 @@ func normalizeMemory(document map[string]interface{}, datasetID string) (map[str
 		if !knownMemoryColumns[key] {
 			continue
 		}
-		result[key] = value
+		result[key] = sanitizePGValue(value)
 	}
 	if status, ok := result["status_int"].(bool); ok {
 		if status {
@@ -218,7 +222,7 @@ func normalizeMemory(document map[string]interface{}, datasetID string) (map[str
 		result["zone_id"] = 0
 	}
 	if content := stringValue(result["content_ltks"]); content != "" {
-		result["tokenized_content_ltks"] = tokenizeMemoryContent(content)
+		result["tokenized_content_ltks"] = sanitizePGText(tokenizeMemoryContent(content))
 	}
 	return result, nil
 }
@@ -252,7 +256,7 @@ func normalizeSkill(document map[string]interface{}, documentID string) (map[str
 			continue
 		}
 		if knownSkillColumns[key] {
-			result[key] = value
+			result[key] = sanitizePGValue(value)
 		}
 	}
 	if stringValue(result["skill_id"]) == "" {
@@ -267,7 +271,7 @@ func normalizeSkill(document map[string]interface{}, documentID string) (map[str
 		if err != nil {
 			tokens = original
 		}
-		result[pair[1]] = tokens
+		result[pair[1]] = sanitizePGText(tokens)
 	}
 	return result, nil
 }
@@ -288,7 +292,7 @@ func encodeUpdateValue(kind, columnName string, value interface{}) (interface{},
 				return 0, nil
 			}
 		}
-		return value, nil
+		return sanitizePGValue(value), nil
 	}
 	return encodeColumnValue(columnName, value)
 }
@@ -438,4 +442,31 @@ func stringValue(value interface{}) string {
 		return text
 	}
 	return fmt.Sprint(value)
+}
+
+// sanitizePGText strips NUL bytes and replaces invalid UTF-8 sequences so
+// PostgreSQL UTF8 text/varchar writes never fail with SQLSTATE 22021.
+func sanitizePGText(text string) string {
+	if strings.IndexByte(text, 0) >= 0 {
+		text = strings.ReplaceAll(text, "\x00", "")
+	}
+	if !utf8.ValidString(text) {
+		text = strings.ToValidUTF8(text, "\ufffd")
+	}
+	return text
+}
+
+func sanitizePGValue(value interface{}) interface{} {
+	switch v := value.(type) {
+	case string:
+		return sanitizePGText(v)
+	case *string:
+		if v == nil {
+			return nil
+		}
+		cleaned := sanitizePGText(*v)
+		return &cleaned
+	default:
+		return value
+	}
 }
