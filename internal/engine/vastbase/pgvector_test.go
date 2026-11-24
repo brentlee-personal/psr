@@ -278,3 +278,28 @@ func TestPGVectorMemoryFusionPlaceholderAlignment(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestPGVectorScrubsLuceneOperatorsBeforeLexemeParse(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	e := newPGVectorEngineWithDB(config.PGVectorConfig{TSConfig: "simple"}, db)
+
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT to_tsvector('simple', $1)::text AS lexemes`)).
+		WithArgs("((门店 商品)   (order_id   促销))").
+		WillReturnRows(sqlmock.NewRows([]string{"lexemes"}).AddRow("'促销':4 '商品':2 '门店':1 'order_id':3"))
+	ftArgs := &sqlArgs{}
+	ftSQL, err := e.pgFullTextCTE(context.Background(), "t1", "id", `"id"`, []string{"content_ltks"}, []string{"1"},
+		`"kb_id" = $1`, []interface{}{"kb-1"}, "((门店 商品) OR (order_id AND 促销))", "100%", 20, ftArgs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(ftSQL, "to_tsvector('simple', \"content_ltks\") @@ plainto_tsquery('simple', $2)") {
+		t.Fatalf("pgFullTextCTE missing simple predicate:\n%s", ftSQL)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatal(err)
+	}
+}

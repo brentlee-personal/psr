@@ -36,8 +36,9 @@ type searchPlan struct {
 }
 
 var (
-	boostSuffixRegex = regexp.MustCompile(`[~^]\d+(?:\.\d+)?`)
-	fieldSpecRegex   = regexp.MustCompile(`^(.+?)(?:\^(\d+(?:\.\d+)?))?$`)
+	boostSuffixRegex  = regexp.MustCompile(`[~^]\d+(?:\.\d+)?`)
+	fieldSpecRegex    = regexp.MustCompile(`^(.+?)(?:\^(\d+(?:\.\d+)?))?$`)
+	luceneBoolOpRegex = regexp.MustCompile(`\b(?:OR|AND|NOT)\b`)
 	// tsvectorLexemeRegex captures the lexemes of a tsvector's text rendering:
 	// each lexeme is single-quoted with embedded quotes doubled, positions and
 	// weights trail the closing quote ('lex':2,4A 'don''t':1).
@@ -403,6 +404,9 @@ func (e *Engine) pgFullTextCTE(ctx context.Context, tableName, idColumn, fieldsE
 // of its lexemes would stay AND-joined inside one plainto_tsquery and the OR
 // relaxation below 100% minimum_should_match would never engage.
 func (e *Engine) pgQueryLexemes(ctx context.Context, query string) ([]string, error) {
+	if e.pgvector {
+		query = luceneBoolOpRegex.ReplaceAllString(query, " ")
+	}
 	rows, err := e.queryRows(ctx, fmt.Sprintf("SELECT to_tsvector('%s', $1)::text AS lexemes", e.tsConfigName()), query)
 	if err != nil {
 		return nil, fmt.Errorf("vastbase: parse fulltext query: %w", err)
