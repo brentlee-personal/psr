@@ -233,3 +233,47 @@ func TestOSSStorageResolveOmitsBucketSegment(t *testing.T) {
 		t.Fatalf("resolve = (%q, %q), want (physical, data/report.txt)", bucket, fnm)
 	}
 }
+
+func TestOSSStorageSharedBucketHealthSkipsBucketCreate(t *testing.T) {
+	var sawProbePut bool
+	o := newOSSTestStorage(func(req *http.Request) (*http.Response, error) {
+		if req.Method == http.MethodHead {
+			t.Fatalf("unexpected HEAD %s in shared-bucket Health", req.URL.Path)
+		}
+		if req.Method == http.MethodPut && strings.HasSuffix(req.URL.Path, "/shared-bucket/psr-storage/txtxtxtxt1") {
+			sawProbePut = true
+			return s3Response(200, ""), nil
+		}
+		t.Fatalf("unexpected request in shared-bucket Health: %s %s", req.Method, req.URL.Path)
+		return nil, nil
+	}, "shared-bucket", "psr-storage")
+
+	if !o.Health(context.Background()) {
+		t.Fatal("Health = false, want true")
+	}
+	if !sawProbePut {
+		t.Fatal("Health did not upload shared-bucket probe object")
+	}
+}
+
+func TestOSSStorageSharedBucketPutSkipsBucketCreate(t *testing.T) {
+	var sawPut bool
+	o := newOSSTestStorage(func(req *http.Request) (*http.Response, error) {
+		if req.Method == http.MethodHead {
+			t.Fatalf("unexpected HEAD %s in shared-bucket Put", req.URL.Path)
+		}
+		if req.Method == http.MethodPut && strings.HasSuffix(req.URL.Path, "/shared-bucket/psr-storage/doc.md") {
+			sawPut = true
+			return s3Response(200, ""), nil
+		}
+		t.Fatalf("unexpected request in shared-bucket Put: %s %s", req.Method, req.URL.Path)
+		return nil, nil
+	}, "shared-bucket", "psr-storage")
+
+	if err := o.Put(context.Background(), "logical-kb", "doc.md", []byte("hello")); err != nil {
+		t.Fatalf("Put: %v", err)
+	}
+	if !sawPut {
+		t.Fatal("Put did not upload object to resolved shared-bucket key")
+	}
+}
