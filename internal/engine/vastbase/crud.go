@@ -109,12 +109,7 @@ func (e *Engine) InsertChunks(ctx context.Context, chunks []map[string]interface
 	}
 
 	identifier := identifierColumn(kind)
-	ids := make([]string, 0, len(normalized))
-	for _, document := range normalized {
-		if id := stringValue(document[identifier]); id != "" {
-			ids = append(ids, id)
-		}
-	}
+	normalized, ids := deduplicateByIdentifier(normalized, identifier)
 	tx, err := e.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -531,4 +526,29 @@ func sortedMapKeys[V any](source map[string]V) []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+// deduplicateByIdentifier collapses duplicate non-empty primary keys in a batch
+// using last-write-wins order so a single multi-row INSERT never violates the
+// unique PK constraint when upstream emits identical deterministic chunk IDs.
+func deduplicateByIdentifier(documents []map[string]interface{}, identifier string) ([]map[string]interface{}, []string) {
+	lastIdx := make(map[string]int, len(documents))
+	for i, document := range documents {
+		if id := stringValue(document[identifier]); id != "" {
+			lastIdx[id] = i
+		}
+	}
+	deduped := make([]map[string]interface{}, 0, len(documents))
+	ids := make([]string, 0, len(lastIdx))
+	for i, document := range documents {
+		id := stringValue(document[identifier])
+		if id != "" {
+			if lastIdx[id] != i {
+				continue
+			}
+			ids = append(ids, id)
+		}
+		deduped = append(deduped, document)
+	}
+	return deduped, ids
 }

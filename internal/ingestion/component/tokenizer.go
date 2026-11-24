@@ -80,10 +80,14 @@ package component
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"net"
 	"regexp"
 	"slices"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
@@ -99,6 +103,11 @@ import (
 )
 
 const ComponentNameTokenizer = schema.ComponentNameTokenizer
+
+var (
+	embedRetryMaxAttempts = 4
+	embedRetryBaseDelay   = 500 * time.Millisecond
+)
 
 // titleExtRE strips a trailing file-extension (e.g. ".pdf") from the
 // upstream document name before tokenizing it. Mirrors the python
@@ -605,7 +614,7 @@ func (c *TokenizerComponent) embedChunks(ctx context.Context, tenantID, kbID, na
 		// tokenizer.py:95 which passes name verbatim to embedding. The
 		// empty-name guard above still uses TrimSpace, matching Python's
 		// `.strip()==""` check at tokenizer.py:200.
-		titleResults, err := embedder.Encode(ctx, []string{name})
+		titleResults, err := encodeWithRetry(ctx, embedder, []string{name})
 		if err != nil {
 			return nil, 0, fmt.Errorf("tokenizer: encode title: %w", err)
 		}
@@ -628,7 +637,7 @@ func (c *TokenizerComponent) embedChunks(ctx context.Context, tenantID, kbID, na
 		if end > len(texts) {
 			end = len(texts)
 		}
-		batchResults, err := embedder.Encode(ctx, texts[start:end])
+		batchResults, err := encodeWithRetry(ctx, embedder, texts[start:end])
 		if err != nil {
 			return nil, 0, fmt.Errorf("tokenizer: encode: %w", err)
 		}
@@ -712,6 +721,82 @@ func truncateForEmbedding(text string, maxTokens int) string {
 	declared := tokenizer.ResolveEmbeddingMaxTokens(maxTokens, 0)
 	limit := tokenizer.EmbeddingTokenLimit(declared)
 	return tokenizer.TrimContentToTokenLimit(text, limit)
+}
+
+func encodeWithRetry(ctx context.Context, embedder Embedder, texts []string) ([]EmbeddingResult, error) {
+	attempts := embedRetryMaxAttempts
+	if attempts < 1 {
+		attempts = 1
+	}
+	var lastErr error
+	for attempt := 1; attempt <= attempts; attempt++ {
+		results, err := embedder.Encode(ctx, texts)
+		if err == nil {
+			return results, nil
+		}
+		lastErr = err
+		if attempt == attempts || !isTransientEmbedError(err) || ctx.Err() != nil {
+			break
+		}
+		delay := embedRetryBaseDelay << uint(attempt-1)
+		common.Warn("Tokenizer: transient embedding error, retrying",
+			zap.Int("attempt", attempt),
+			zap.Int("max_attempts", attempts),
+			zap.Duration("delay", delay),
+			zap.Error(err))
+		if delay > 0 {
+			timer := time.NewTimer(delay)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				return nil, lastErr
+			case <-timer.C:
+			}
+		}
+	}
+	return nil, lastErr
+}
+
+func isTransientEmbedError(err error) bool {
+	if err == nil || errors.Is(err, context.Canceled) {
+		return false
+	}
+	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+	var netErr net.Error
+	if errors.As(err, &netErr) && (netErr.Timeout() || netErr.Temporary()) {
+		return true
+	}
+	msg := strings.ToLower(err.Error())
+	for _, needle := range []string{
+		"unexpected eof",
+		": eof",
+		"connection reset",
+		"broken pipe",
+		"timeout",
+		"timed out",
+		"too many requests",
+		"rate limit",
+		"status 429",
+		"status code 429",
+		"status 500",
+		"status 502",
+		"status 503",
+		"status 504",
+		"status code 500",
+		"status code 502",
+		"status code 503",
+		"status code 504",
+		"bad gateway",
+		"service unavailable",
+		"gateway timeout",
+	} {
+		if strings.Contains(msg, needle) {
+			return true
+		}
+	}
+	return false
 }
 
 func mergeEmbeddingVectors(titleVec, contentVec []float64, titleWeight float64) ([]float64, error) {
