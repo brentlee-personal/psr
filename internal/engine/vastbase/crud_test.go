@@ -121,7 +121,7 @@ func TestInsertChunksDeduplicatesDuplicateIDsWithinBatch(t *testing.T) {
 	)
 
 	mock.ExpectBegin()
-	mock.ExpectExec(regexp.QuoteMeta(`DELETE FROM "t1" WHERE "id" IN ($1,$2)`)).
+	mock.ExpectExec(regexp.QuoteMeta(`DELETE FROM "t1" WHERE "id" IN ($1, $2)`)).
 		WithArgs("c2", "c1").WillReturnResult(sqlmock.NewResult(0, 2))
 	mock.ExpectExec(regexp.QuoteMeta(
 		`INSERT INTO "t1" ("content_ltks", "id", "kb_id", "q_3_vec") VALUES ($1,$2,$3,$4),($5,$6,$7,$8)`)).
