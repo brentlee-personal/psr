@@ -606,13 +606,14 @@ func (e *Engine) searchMemoryFusion(ctx context.Context, tableName, kind string,
 	args := &sqlArgs{}
 	filterPart := args.embedFilter(filterSQL, filterArgs)
 	match := fmt.Sprintf("to_tsvector('simple', COALESCE(tokenized_content_ltks, '')) @@ to_tsquery('simple', $%d)", args.add(tsquery))
+	tsScoreArg := args.add(tsquery)
 	vecArg := args.add(vector)
 	vecSimExpr := fmt.Sprintf("(1 - (%s %s $%d))", column, e.distanceOp(), vecArg)
 	if e.pgvector {
 		vecSimExpr = fmt.Sprintf("COALESCE(NULLIF(1 - (%s %s $%d), 'NaN'::double precision), 0.0::double precision)", column, e.distanceOp(), vecArg)
 	}
 	score := fmt.Sprintf("(ts_rank(to_tsvector('simple', COALESCE(tokenized_content_ltks, '')), to_tsquery('simple', $%d)) * %s + %s * %s)",
-		args.add(tsquery), formatFloat(textWeight), vecSimExpr, formatFloat(vectorWeight))
+		tsScoreArg, formatFloat(textWeight), vecSimExpr, formatFloat(vectorWeight))
 	inner := fmt.Sprintf("SELECT %s, %s AS _score FROM %s WHERE %s AND %s LIMIT %d",
 		selectFieldsSQL(output), score, quoteIdent(tableName), filterPart, match, numCandidates)
 	outerVecArg := args.add(vector)
