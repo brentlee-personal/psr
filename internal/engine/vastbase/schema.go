@@ -290,11 +290,21 @@ func (e *Engine) ensureDynamicColumns(ctx context.Context, tableName string, fie
 		if static[field] || !validFieldName(field) {
 			continue
 		}
-		if err := e.ensureColumn(ctx, tableName, dynamicColumnDefinition(field)); err != nil {
+		if err := e.ensureColumn(ctx, tableName, e.dynamicColumnForField(field)); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func (e *Engine) dynamicColumnForField(field string) columnDefinition {
+	if e.pgvector {
+		if match := vectorDimRegex.FindStringSubmatch(field); match != nil {
+			dim, _ := strconv.Atoi(match[1])
+			return columnDefinition{name: field, typeSQL: pgvectorColumnType(dim)}
+		}
+	}
+	return dynamicColumnDefinition(field)
 }
 
 // dynamicColumnDefinition maps an unknown document field to its column type:
@@ -355,31 +365,64 @@ func (e *Engine) ensureFullTextIndexes(ctx context.Context, tableName string, fi
 		}
 		return nil
 	}
-	indexName := "text_gin_idx_" + tableName
+	indexName := fullTextIndexName(tableName)
 	exists, err := e.indexExists(ctx, tableName, indexName)
 	if err != nil || exists {
 		return err
 	}
+	tsCfg := e.tsConfigName()
 	expressions := make([]string, 0, len(fields))
 	for _, field := range fields {
-		expressions = append(expressions, fmt.Sprintf("to_tsvector('cn_tokenizer', %s)", quoteIdent(field)))
+		expressions = append(expressions, fmt.Sprintf("to_tsvector('%s', %s)", tsCfg, quoteIdent(field)))
 	}
 	query := fmt.Sprintf("CREATE INDEX IF NOT EXISTS %s ON %s USING gin (%s)",
 		quoteIdent(indexName), quoteIdent(tableName), strings.Join(expressions, ", "))
 	if _, err := e.db.ExecContext(ctx, query); err != nil {
-		common.Warn("Vastbase PG full-text index creation failed; vector search works without it",
+		common.Warn("PG full-text index creation failed; vector search works without it",
 			zap.String("table", tableName), zap.Error(err))
 	}
 	return nil
 }
 
+func fullTextIndexName(tableName string) string {
+	candidate := "text_gin_idx_" + tableName
+	if len(candidate) <= maxIndexNameLength {
+		return candidate
+	}
+	return regularIndexName(tableName, "text_gin")
+}
+
 // ensureVectorColumnAndIndex provisions the q_N_vec column for an embedding
-// size and its HNSW graph index.
+// size and its HNSW vector index.
 func (e *Engine) ensureVectorColumnAndIndex(ctx context.Context, tableName string, vectorSize int) error {
 	if vectorSize <= 0 {
 		return nil
 	}
 	columnName := fmt.Sprintf("q_%d_vec", vectorSize)
+	if e.pgvector {
+		colType := pgvectorColumnType(vectorSize)
+		if err := e.ensureColumn(ctx, tableName, columnDefinition{
+			name:    columnName,
+			typeSQL: colType,
+		}); err != nil {
+			return err
+		}
+		ops, supported := pgvectorHNSWOps(vectorSize)
+		if !supported {
+			common.Warn("pgvector HNSW skipped for high-dimension vector column",
+				zap.String("table", tableName), zap.Int("dimension", vectorSize))
+			return nil
+		}
+		indexName := regularIndexName(tableName, columnName+"_hnsw")
+		return e.withDDLLock(ctx, "pgv_add_vector_idx_"+tableName+"_"+columnName, func() (bool, error) {
+			return e.indexExists(ctx, tableName, indexName)
+		}, func() error {
+			_, err := e.db.ExecContext(ctx, fmt.Sprintf(
+				"CREATE INDEX IF NOT EXISTS %s ON %s USING hnsw (%s %s) WITH (m=16, ef_construction=64)",
+				quoteIdent(indexName), quoteIdent(tableName), quoteIdent(columnName), ops))
+			return err
+		})
+	}
 	if err := e.ensureColumn(ctx, tableName, columnDefinition{
 		name:    columnName,
 		typeSQL: fmt.Sprintf("floatvector(%d)", vectorSize),
@@ -594,7 +637,7 @@ func (e *Engine) ChunkStoreExists(ctx context.Context, baseName, datasetID strin
 				}
 			}
 		} else {
-			exists, err = e.indexExists(ctx, baseName, "text_gin_idx_"+baseName)
+			exists, err = e.indexExists(ctx, baseName, fullTextIndexName(baseName))
 			if err != nil || !exists {
 				return exists, err
 			}

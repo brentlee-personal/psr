@@ -228,6 +228,9 @@ func GetAllConfigs() ([]map[string]interface{}, error) {
 	case "vastbase":
 		vastbaseConfig := globalConfig.GetVastbaseConfig()
 		allConfigs = append(allConfigs, vastbaseConfig.ExportConfigs())
+	case "pgvector", "postgres":
+		pgvectorConfig := globalConfig.GetPGVectorConfig()
+		allConfigs = append(allConfigs, pgvectorConfig.ExportConfigs())
 	default:
 		return nil, fmt.Errorf("not supported doc engine: %s", docEngineType)
 	}

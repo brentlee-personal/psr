@@ -33,6 +33,7 @@ const (
 	EngineElasticsearch EngineType = "elasticsearch"
 	EngineInfinity      EngineType = "infinity"
 	EngineOceanBase     EngineType = "oceanbase"
+	EnginePGVector      EngineType = "pgvector"
 	EngineSeekDB        EngineType = "seekdb"
 	EngineSereneDB      EngineType = "serenedb"
 	EngineVastbase      EngineType = "vastbase"
@@ -123,6 +124,12 @@ func IsOceanBaseFamily(engineName string) bool {
 // IsOceanBaseFamily.
 func IsVastbase(engineName string) bool {
 	return engineName == string(EngineVastbase)
+}
+
+// IsPGVector reports whether a configured engine uses the standard PostgreSQL
+// pgvector document-engine implementation.
+func IsPGVector(engineName string) bool {
+	return engineName == string(EnginePGVector) || engineName == "postgres"
 }
 
 type MessageQueue interface {

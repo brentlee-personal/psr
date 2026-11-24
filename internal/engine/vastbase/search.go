@@ -362,15 +362,16 @@ func (e *Engine) pgFullTextCTE(ctx context.Context, tableName, idColumn, fieldsE
 	if minimumShouldMatchCoversAllTerms(minimumShouldMatch, len(terms)) {
 		joiner = " AND "
 	}
+	tsCfg := e.tsConfigName()
 	predicateFor := func(field string) (match string, rank string) {
 		matches := make([]string, 0, len(terms))
 		ranks := make([]string, 0, len(terms))
 		for _, term := range terms {
 			placeholder := args.add(term)
-			matches = append(matches, fmt.Sprintf("to_tsvector('cn_tokenizer', %s) @@ plainto_tsquery('cn_tokenizer', $%d)",
-				quoteIdent(field), placeholder))
-			ranks = append(ranks, fmt.Sprintf("ts_rank(to_tsvector('cn_tokenizer', %s), plainto_tsquery('cn_tokenizer', $%d))",
-				quoteIdent(field), placeholder))
+			matches = append(matches, fmt.Sprintf("to_tsvector('%s', %s) @@ plainto_tsquery('%s', $%d)",
+				tsCfg, quoteIdent(field), tsCfg, placeholder))
+			ranks = append(ranks, fmt.Sprintf("ts_rank(to_tsvector('%s', %s), plainto_tsquery('%s', $%d))",
+				tsCfg, quoteIdent(field), tsCfg, placeholder))
 		}
 		return strings.Join(matches, joiner), "GREATEST(" + strings.Join(ranks, ", ") + ")"
 	}
@@ -402,7 +403,7 @@ func (e *Engine) pgFullTextCTE(ctx context.Context, tableName, idColumn, fieldsE
 // of its lexemes would stay AND-joined inside one plainto_tsquery and the OR
 // relaxation below 100% minimum_should_match would never engage.
 func (e *Engine) pgQueryLexemes(ctx context.Context, query string) ([]string, error) {
-	rows, err := e.queryRows(ctx, "SELECT to_tsvector('cn_tokenizer', $1)::text AS lexemes", query)
+	rows, err := e.queryRows(ctx, fmt.Sprintf("SELECT to_tsvector('%s', $1)::text AS lexemes", e.tsConfigName()), query)
 	if err != nil {
 		return nil, fmt.Errorf("vastbase: parse fulltext query: %w", err)
 	}
@@ -497,6 +498,9 @@ func (e *Engine) vectorCTE(tableName string, output []string, filterSQL string, 
 	second := args.add(vector)
 	column := quoteIdent(dense.VectorColumnName)
 	scoreExpr := fmt.Sprintf("(1 - (%s %s $%d))", column, e.distanceOp(), first)
+	if e.pgvector {
+		scoreExpr = fmt.Sprintf("COALESCE(NULLIF(1 - (%s %s $%d), 'NaN'::double precision), 0.0::double precision)", column, e.distanceOp(), first)
+	}
 	inner := fmt.Sprintf("SELECT %s, %s AS _score FROM %s WHERE %s ORDER BY %s %s $%d LIMIT %d",
 		selectFieldsSQL(output), scoreExpr, quoteIdent(tableName), filterPart, column, e.distanceOp(), second, topn)
 	thresholdPlaceholder := args.add(threshold)
@@ -602,11 +606,20 @@ func (e *Engine) searchMemoryFusion(ctx context.Context, tableName, kind string,
 	args := &sqlArgs{}
 	filterPart := args.embedFilter(filterSQL, filterArgs)
 	match := fmt.Sprintf("to_tsvector('simple', COALESCE(tokenized_content_ltks, '')) @@ to_tsquery('simple', $%d)", args.add(tsquery))
-	score := fmt.Sprintf("(ts_rank(to_tsvector('simple', COALESCE(tokenized_content_ltks, '')), to_tsquery('simple', $%d)) * %s + (1 - (%s %s $%d)) * %s)",
-		args.add(tsquery), formatFloat(textWeight), column, e.distanceOp(), args.add(vector), formatFloat(vectorWeight))
+	vecArg := args.add(vector)
+	vecSimExpr := fmt.Sprintf("(1 - (%s %s $%d))", column, e.distanceOp(), vecArg)
+	if e.pgvector {
+		vecSimExpr = fmt.Sprintf("COALESCE(NULLIF(1 - (%s %s $%d), 'NaN'::double precision), 0.0::double precision)", column, e.distanceOp(), vecArg)
+	}
+	score := fmt.Sprintf("(ts_rank(to_tsvector('simple', COALESCE(tokenized_content_ltks, '')), to_tsquery('simple', $%d)) * %s + %s * %s)",
+		args.add(tsquery), formatFloat(textWeight), vecSimExpr, formatFloat(vectorWeight))
 	inner := fmt.Sprintf("SELECT %s, %s AS _score FROM %s WHERE %s AND %s LIMIT %d",
 		selectFieldsSQL(output), score, quoteIdent(tableName), filterPart, match, numCandidates)
-	outerVector := fmt.Sprintf("(1 - (%s %s $%d))", column, e.distanceOp(), args.add(vector))
+	outerVecArg := args.add(vector)
+	outerVector := fmt.Sprintf("(1 - (%s %s $%d))", column, e.distanceOp(), outerVecArg)
+	if e.pgvector {
+		outerVector = fmt.Sprintf("COALESCE(NULLIF(1 - (%s %s $%d), 'NaN'::double precision), 0.0::double precision)", column, e.distanceOp(), outerVecArg)
+	}
 	thresholdPlaceholder := args.add(threshold)
 	query := fmt.Sprintf("SELECT * FROM (%s) AS candidates WHERE %s >= $%d ORDER BY _score DESC LIMIT %d OFFSET %d",
 		inner, outerVector, thresholdPlaceholder, limit, offset)
