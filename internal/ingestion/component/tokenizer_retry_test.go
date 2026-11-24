@@ -17,6 +17,7 @@
 package component
 
 import (
+	"compress/flate"
 	"context"
 	"errors"
 	"fmt"
@@ -120,5 +121,28 @@ func TestEncodeWithRetryAbortsOnCanceledContext(t *testing.T) {
 	}
 	if got := embedder.calls.Load(); got != 1 {
 		t.Fatalf("embedder calls = %d, want 1 (canceled context must abort without retrying)", got)
+	}
+}
+
+func TestEncodeWithRetryRetriesFlateCorruptInput(t *testing.T) {
+	origDelay := embedRetryBaseDelay
+	embedRetryBaseDelay = time.Millisecond
+	defer func() { embedRetryBaseDelay = origDelay }()
+
+	embedder := &scriptedEmbedder{
+		stubEmbedder: newStubEmbedder(4),
+		outcomes: map[int]error{
+			1: fmt.Errorf("failed to read response: %w", flate.CorruptInputError(52767)),
+		},
+	}
+	res, err := encodeWithRetry(context.Background(), embedder, []string{"compressed-glitch"})
+	if err != nil {
+		t.Fatalf("encodeWithRetry failed on transient flate corrupt input: %v", err)
+	}
+	if len(res) != 1 || len(res[0].Vector) != 4 {
+		t.Fatalf("unexpected result = %#v", res)
+	}
+	if got := embedder.calls.Load(); got != 2 {
+		t.Fatalf("embedder calls = %d, want 2", got)
 	}
 }

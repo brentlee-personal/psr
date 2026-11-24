@@ -78,6 +78,8 @@
 package component
 
 import (
+	"compress/flate"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
@@ -761,7 +763,12 @@ func isTransientEmbedError(err error) bool {
 	if err == nil || errors.Is(err, context.Canceled) {
 		return false
 	}
-	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, context.DeadlineExceeded) {
+	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, context.DeadlineExceeded) ||
+		errors.Is(err, gzip.ErrChecksum) || errors.Is(err, gzip.ErrHeader) {
+		return true
+	}
+	var flateErr flate.CorruptInputError
+	if errors.As(err, &flateErr) {
 		return true
 	}
 	var netErr net.Error
@@ -770,6 +777,15 @@ func isTransientEmbedError(err error) bool {
 	}
 	msg := strings.ToLower(err.Error())
 	for _, needle := range []string{
+		"failed to read response",
+		"flate:",
+		"corrupt input",
+		"gzip:",
+		"invalid checksum",
+		"http2:",
+		"stream error",
+		"use of closed network connection",
+		"connection refused",
 		"unexpected eof",
 		": eof",
 		"connection reset",
